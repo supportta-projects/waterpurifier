@@ -1,0 +1,154 @@
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  type DocumentData,
+  type DocumentSnapshot,
+} from "firebase/firestore";
+
+import { db } from "@/lib/firebase";
+import type { CreateInvoiceInput, Invoice, InvoiceStatus } from "@/types/invoice";
+
+const shareBaseUrl = process.env.NEXT_PUBLIC_INVOICE_SHARE_BASE_URL ?? "";
+
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+function buildInvoiceShareUrl(invoice: {
+  id: string;
+  number: string;
+  customerName: string;
+  productName: string;
+  totalAmount: number;
+}) {
+  const amount = formatCurrency(invoice.totalAmount);
+  const messageLines = [
+    `Water Purifier Service Invoice ${invoice.number}`,
+    `Customer: ${invoice.customerName}`,
+    `Product: ${invoice.productName}`,
+    `Amount: ${amount}`,
+  ];
+
+  if (shareBaseUrl) {
+    const normalizedBase = shareBaseUrl.endsWith("/")
+      ? shareBaseUrl.slice(0, -1)
+      : shareBaseUrl;
+    messageLines.push(`View invoice: ${normalizedBase}/invoice/${invoice.id}`);
+  }
+
+  messageLines.push("Thank you for choosing our service.");
+  const message = messageLines.join("\n");
+
+  return `https://wa.me/?text=${encodeURIComponent(message)}`;
+}
+
+function mapInvoiceSnapshot(snapshot: DocumentSnapshot<DocumentData>): Invoice {
+  const data = snapshot.data();
+
+  if (!data) {
+    throw new Error("Invoice not found");
+  }
+
+  return {
+    id: snapshot.id,
+    orderId: data.orderId as string,
+    customerId: data.customerId as string,
+    customerName: data.customerName as string,
+    productId: data.productId as string,
+    productName: data.productName as string,
+    totalAmount: data.totalAmount as number,
+    number: data.number as string,
+    status: (data.status ?? "PENDING") as InvoiceStatus,
+    shareUrl: data.shareUrl ?? "",
+    createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : "",
+    updatedAt: data.updatedAt ? data.updatedAt.toDate().toISOString() : "",
+  };
+}
+
+export async function fetchInvoices(): Promise<Invoice[]> {
+  const invoicesQuery = query(collection(db, "invoices"), orderBy("createdAt", "desc"));
+  const snapshot = await getDocs(invoicesQuery);
+  return snapshot.docs.map((docSnapshot) => mapInvoiceSnapshot(docSnapshot));
+}
+
+export async function fetchInvoiceById(id: string): Promise<Invoice | null> {
+  const snapshot = await getDoc(doc(db, "invoices", id));
+  return snapshot.exists() ? mapInvoiceSnapshot(snapshot) : null;
+}
+
+export async function createInvoice(payload: CreateInvoiceInput) {
+  const now = Date.now();
+  const invoiceNumber = `INV-${now}`;
+  const invoicesRef = collection(db, "invoices");
+
+  const docRef = await addDoc(invoicesRef, {
+    ...payload,
+    number: invoiceNumber,
+    status: "PENDING" satisfies InvoiceStatus,
+    shareUrl: "",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+
+  const shareUrl = buildInvoiceShareUrl({
+    id: docRef.id,
+    number: invoiceNumber,
+    customerName: payload.customerName,
+    productName: payload.productName,
+    totalAmount: payload.totalAmount,
+  });
+
+  await updateDoc(docRef, {
+    shareUrl,
+    updatedAt: serverTimestamp(),
+  });
+
+  const snapshot = await getDoc(docRef);
+  return mapInvoiceSnapshot(snapshot);
+}
+
+export async function updateInvoiceStatus(id: string, status: InvoiceStatus) {
+  const docRef = doc(db, "invoices", id);
+  await updateDoc(docRef, {
+    status,
+    updatedAt: serverTimestamp(),
+  });
+  const snapshot = await getDoc(docRef);
+  return mapInvoiceSnapshot(snapshot);
+}
+
+export async function refreshInvoiceShareUrl(id: string) {
+  const docRef = doc(db, "invoices", id);
+  const snapshot = await getDoc(docRef);
+  if (!snapshot.exists()) {
+    throw new Error("Invoice not found");
+  }
+
+  const invoice = mapInvoiceSnapshot(snapshot);
+  const shareUrl = buildInvoiceShareUrl(invoice);
+
+  await updateDoc(docRef, {
+    shareUrl,
+    updatedAt: serverTimestamp(),
+  });
+
+  const updatedSnapshot = await getDoc(docRef);
+  return mapInvoiceSnapshot(updatedSnapshot);
+}
+
+export async function deleteInvoice(id: string) {
+  await deleteDoc(doc(db, "invoices", id));
+}
+
