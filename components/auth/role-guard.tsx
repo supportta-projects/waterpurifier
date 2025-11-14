@@ -36,10 +36,19 @@ export function RoleGuard({ allowed, children }: RoleGuardProps) {
 
   if (isLoading) {
     return (
-      <div className="flex flex-1 items-center justify-center">
-        <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-          <span className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <p>Loading workspace…</p>
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-sky-50 via-white to-blue-50">
+        <div className="flex flex-col items-center gap-4 rounded-3xl border border-border/40 bg-white/90 px-8 py-10 shadow-2xl shadow-primary/5 backdrop-blur-xl">
+          <div className="relative">
+            <div className="h-16 w-16 rounded-full border-4 border-primary/20" />
+            <div className="absolute inset-0 h-16 w-16 animate-spin rounded-full border-4 border-transparent border-t-primary border-r-primary" />
+            <div className="absolute inset-2 h-12 w-12 rounded-full bg-primary/5" />
+          </div>
+          <div className="flex flex-col items-center gap-2 text-center">
+            <h3 className="text-lg font-semibold text-primary">Preparing Your Workspace</h3>
+            <p className="text-sm text-muted-foreground">
+              Just a moment while we set everything up...
+            </p>
+          </div>
         </div>
       </div>
     );
