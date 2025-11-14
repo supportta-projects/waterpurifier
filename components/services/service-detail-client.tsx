@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { ArrowLeft, ClipboardList, Users } from "lucide-react";
 
 import { useServices } from "@/hooks/use-services";
@@ -28,6 +28,12 @@ type ServiceDetailClientProps = {
 
 export function ServiceDetailClient({ serviceId }: ServiceDetailClientProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const basePath = pathname?.startsWith("/technician")
+    ? "/technician/services"
+    : pathname?.startsWith("/staff")
+      ? "/staff/services"
+      : "/admin/services";
   const { services, loading, error } = useServices();
 
   const service = useMemo(
@@ -52,7 +58,7 @@ export function ServiceDetailClient({ serviceId }: ServiceDetailClientProps) {
         <Button
           variant="outline"
           className="rounded-full"
-          onClick={() => router.push("/admin/services/all")}
+          onClick={() => router.push(basePath)}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to services

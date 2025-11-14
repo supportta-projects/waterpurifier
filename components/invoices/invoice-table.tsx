@@ -45,10 +45,19 @@ function formatDate(value?: string) {
   });
 }
 
+function shortenUrl(url: string, maxLength: number = 40): string {
+  if (url.length <= maxLength) return url;
+  return `${url.substring(0, maxLength - 3)}...`;
+}
+
 export function InvoiceTable() {
   const router = useRouter();
   const pathname = usePathname();
-  const basePath = pathname?.startsWith("/staff") ? "/staff" : "/admin";
+  const basePath = pathname?.startsWith("/technician")
+    ? "/technician"
+    : pathname?.startsWith("/staff")
+      ? "/staff"
+      : "/admin";
   const { invoices, loading, saving, error, refresh, handleStatusChange, handleResend } =
     useInvoices();
 
@@ -90,18 +99,23 @@ export function InvoiceTable() {
     });
   }, [invoices, statusFilter, search]);
 
+  const getInvoiceTemplateUrl = (invoiceId: string): string => {
+    if (typeof window === "undefined") return "";
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/invoice/${invoiceId}`;
+  };
+
   const handleResendClick = async (invoice: Invoice) => {
     try {
-      const url = await handleResend(invoice.id);
-      if (url) {
-        await navigator.clipboard.writeText(url);
-        toast.success("Invoice link copied. Share it via WhatsApp.");
-      } else {
-        toast.error("No share link available for this invoice yet.");
-      }
+      // Get the invoice template URL (direct link to invoice page)
+      const invoiceUrl = getInvoiceTemplateUrl(invoice.id);
+      
+      // Copy to clipboard
+      await navigator.clipboard.writeText(invoiceUrl);
+      toast.success("Invoice link copied to clipboard. Share it with the customer.");
     } catch (err) {
       console.error(err);
-      toast.error("Unable to generate share link. Please try again.");
+      toast.error("Unable to copy invoice link. Please try again.");
     }
   };
 
@@ -293,9 +307,10 @@ export function InvoiceTable() {
                   variant="ghost"
                   className="rounded-full"
                   onClick={() => void handleResendClick(invoice)}
+                  title="Copy invoice link"
                 >
                   <Share2 className="mr-2 h-4 w-4" />
-                  Share
+                  Copy Link
                 </Button>
               </div>
             ),
@@ -304,8 +319,7 @@ export function InvoiceTable() {
       />
 
       <div className="rounded-[2rem] border border-border/40 bg-white/95 px-6 py-4 text-xs text-muted-foreground shadow-soft">
-        Re-sharing an invoice regenerates the WhatsApp link and copies it to your clipboard so you
-        can message the customer instantly.
+        Click "Copy Link" to copy the invoice template URL. Customers can view, print, or download the invoice from the shared link.
       </div>
     </section>
   );

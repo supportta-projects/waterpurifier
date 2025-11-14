@@ -58,11 +58,11 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "flex h-full w-full max-w-[17rem] flex-col justify-between rounded-3xl border border-sidebar-border/60 bg-sidebar/95 p-4 shadow-lg shadow-black/10 backdrop-blur-xl",
+        "flex h-full w-full max-w-[17rem] flex-col rounded-3xl border border-sidebar-border/60 bg-sidebar/95 p-4 shadow-lg shadow-black/10 backdrop-blur-xl",
         className,
       )}
     >
-      <div className="space-y-6">
+      <div className="flex-1 space-y-6 overflow-y-auto">
         <div className="rounded-2xl bg-gradient-soft px-4 py-5">
           <div className="text-xs font-medium uppercase tracking-wide text-primary/80">
             {subtitle ?? "Water Purifier"}
@@ -103,7 +103,7 @@ export function Sidebar({
         </nav>
       </div>
 
-      <div className="space-y-4">
+      <div className="mt-auto space-y-4 pt-4">
         {footer ? <div>{footer}</div> : null}
         <div className="rounded-2xl border border-border/40 bg-white/80 p-4 shadow-inner shadow-black/5">
           <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">

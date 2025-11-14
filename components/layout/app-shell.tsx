@@ -27,11 +27,11 @@ export function AppShell({
       )}
     >
       <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col gap-4 px-4 py-4 lg:flex-row lg:px-6 lg:py-6">
-        <div className="lg:w-[280px] lg:flex-none">
+        <div className="lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] lg:w-[280px] lg:flex-none">
           <div className="lg:hidden">
             <div className="mb-4">{sidebar}</div>
           </div>
-          <div className="hidden lg:flex">{sidebar}</div>
+          <div className="hidden lg:flex lg:h-full">{sidebar}</div>
         </div>
         <div className="flex w-full flex-1 overflow-hidden rounded-[2.25rem] border border-border/40 bg-white/85 shadow-2xl shadow-primary/5 backdrop-blur-xl">
           <div className="flex w-full flex-col overflow-hidden">

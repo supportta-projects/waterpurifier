@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -72,8 +72,19 @@ type InvoiceDetailClientProps = {
   invoiceId: string;
 };
 
+function shortenUrl(url: string, maxLength: number = 50): string {
+  if (url.length <= maxLength) return url;
+  return `${url.substring(0, maxLength - 3)}...`;
+}
+
 export function InvoiceDetailClient({ invoiceId }: InvoiceDetailClientProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const basePath = pathname?.startsWith("/technician")
+    ? "/technician"
+    : pathname?.startsWith("/staff")
+      ? "/staff"
+      : "/admin";
   const { invoices, loading, error, handleResend } = useInvoices();
   const [resending, setResending] = useState(false);
 
@@ -99,7 +110,7 @@ export function InvoiceDetailClient({ invoiceId }: InvoiceDetailClientProps) {
         <Button
           variant="outline"
           className="rounded-full"
-          onClick={() => router.push("/admin/invoices")}
+          onClick={() => router.push(`${basePath}/invoices`)}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to invoices
@@ -110,19 +121,40 @@ export function InvoiceDetailClient({ invoiceId }: InvoiceDetailClientProps) {
 
   const statusConfig = invoiceStatusMeta[invoice.status];
 
+  const getInvoiceTemplateUrl = (invoiceId: string): string => {
+    if (typeof window === "undefined") return "";
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/invoice/${invoiceId}`;
+  };
+
   const handleCopyShareLink = async () => {
+    try {
+      // Get the invoice template URL (direct link to invoice page)
+      const invoiceUrl = getInvoiceTemplateUrl(invoice.id);
+      
+      // Copy to clipboard
+      await navigator.clipboard.writeText(invoiceUrl);
+      toast.success("Invoice link copied to clipboard. Share it with the customer.");
+    } catch (err) {
+      console.error(err);
+      toast.error("Unable to copy invoice link. Please try again.");
+    }
+  };
+
+  const handleShareViaWhatsApp = async () => {
     setResending(true);
     try {
       const url = await handleResend(invoice.id);
       if (url) {
         await navigator.clipboard.writeText(url);
-        toast.success("Invoice link copied. Share via WhatsApp or email.");
+        window.open(url, "_blank");
+        toast.success("WhatsApp link copied and opened.");
       } else {
-        toast.error("Unable to generate share link.");
+        toast.error("Unable to generate WhatsApp link.");
       }
     } catch (err) {
       console.error(err);
-      toast.error("Unable to generate share link. Please try again.");
+      toast.error("Unable to generate WhatsApp link. Please try again.");
     } finally {
       setResending(false);
     }
@@ -133,7 +165,7 @@ export function InvoiceDetailClient({ invoiceId }: InvoiceDetailClientProps) {
       <Button
         variant="ghost"
         className="rounded-full text-sm text-primary hover:bg-primary/10"
-        onClick={() => router.push("/admin/invoices")}
+        onClick={() => router.push(`${basePath}/invoices`)}
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to invoices
@@ -201,38 +233,51 @@ export function InvoiceDetailClient({ invoiceId }: InvoiceDetailClientProps) {
               Share link
             </div>
             <div className="rounded-2xl border border-border/40 bg-white/95 p-4 shadow-inner shadow-black/5">
-              <p className="break-all text-xs text-muted-foreground">
-                {invoice.shareUrl ?? "Share link will appear once generated."}
-              </p>
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-foreground">Invoice Template Link:</p>
+                <a
+                  href={getInvoiceTemplateUrl(invoice.id)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block truncate text-xs text-primary underline hover:text-primary/80"
+                  title={getInvoiceTemplateUrl(invoice.id)}
+                >
+                  {shortenUrl(getInvoiceTemplateUrl(invoice.id), 50)}
+                </a>
+              </div>
+              {invoice.shareUrl ? (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs font-medium text-foreground">WhatsApp Share Link:</p>
+                  <a
+                    href={invoice.shareUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block truncate text-xs text-primary underline hover:text-primary/80"
+                    title={invoice.shareUrl}
+                  >
+                    {shortenUrl(invoice.shareUrl, 50)}
+                  </a>
+                </div>
+              ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button
                   size="sm"
                   className="rounded-full"
                   onClick={handleCopyShareLink}
+                >
+                  <ClipboardCopy className="mr-2 h-4 w-4" />
+                  Copy Invoice Link
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-full"
+                  onClick={handleShareViaWhatsApp}
                   disabled={resending}
                 >
                   <Share2 className="mr-2 h-4 w-4" />
-                  {resending ? "Generating…" : "Copy share link"}
+                  {resending ? "Generating…" : "Share via WhatsApp"}
                 </Button>
-                {invoice.shareUrl ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="rounded-full"
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(invoice.shareUrl ?? "");
-                        toast.success("Share link copied to clipboard.");
-                      } catch (err) {
-                        console.error(err);
-                        toast.error("Unable to copy share link.");
-                      }
-                    }}
-                  >
-                    <ClipboardCopy className="mr-2 h-4 w-4" />
-                    Copy current link
-                  </Button>
-                ) : null}
               </div>
             </div>
 
