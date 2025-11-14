@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   BadgeCheck,
   CalendarClock,
@@ -63,6 +63,8 @@ type ServiceFormErrors = {
 
 export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const basePath = pathname?.startsWith("/staff") ? "/staff" : "/admin";
 
   const {
     services,
@@ -466,7 +468,7 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
                   variant="outline"
                   size="icon"
                   className="h-8 w-8 rounded-full"
-                  onClick={() => router.push(`/admin/services/${service.id}`)}
+                  onClick={() => router.push(`${basePath}/services/${service.id}`)}
                 >
                   <Eye className="h-4 w-4" />
                   <span className="sr-only">View service</span>

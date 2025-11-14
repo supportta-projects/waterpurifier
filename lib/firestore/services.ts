@@ -62,10 +62,18 @@ export async function fetchServices(options?: {
     constraints.push(where("technicianId", "==", options.technicianId));
   }
 
-  constraints.push(orderBy("scheduledDate", "desc"));
+  // Remove orderBy to avoid index requirements and improve performance
+  // Sort in memory instead
   const servicesQuery = query(collection(db, "services"), ...constraints);
   const snapshot = await getDocs(servicesQuery);
-  const services = snapshot.docs.map((docSnapshot) => mapServiceSnapshot(docSnapshot));
+  let services = snapshot.docs.map((docSnapshot) => mapServiceSnapshot(docSnapshot));
+
+  // Sort by scheduledDate descending in memory
+  services = services.sort((a, b) => {
+    const dateA = a.scheduledDate ? new Date(a.scheduledDate).getTime() : 0;
+    const dateB = b.scheduledDate ? new Date(b.scheduledDate).getTime() : 0;
+    return dateB - dateA; // Descending order (newest first)
+  });
 
   if (options?.limit && options.limit > 0) {
     return services.slice(0, options.limit);

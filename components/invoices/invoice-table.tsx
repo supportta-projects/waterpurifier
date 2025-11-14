@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { Eye, RefreshCcw, Search, Share2 } from "lucide-react";
 
@@ -47,6 +47,8 @@ function formatDate(value?: string) {
 
 export function InvoiceTable() {
   const router = useRouter();
+  const pathname = usePathname();
+  const basePath = pathname?.startsWith("/staff") ? "/staff" : "/admin";
   const { invoices, loading, saving, error, refresh, handleStatusChange, handleResend } =
     useInvoices();
 
@@ -281,7 +283,7 @@ export function InvoiceTable() {
                   size="sm"
                   variant="outline"
                   className="rounded-full"
-                  onClick={() => router.push(`/admin/invoices/${invoice.id}`)}
+                      onClick={() => router.push(`${basePath}/invoices/${invoice.id}`)}
                 >
                   <Eye className="mr-2 h-4 w-4" />
                   View

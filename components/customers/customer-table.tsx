@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Eye, PenSquare, Plus, Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
@@ -48,6 +48,8 @@ const emptyForm: CustomerFormState = {
 
 export function CustomerTable() {
   const router = useRouter();
+  const pathname = usePathname();
+  const basePath = pathname?.startsWith("/staff") ? "/staff" : "/admin";
   const { customers, loading, saving, error, handleCreate, handleUpdate } = useCustomers();
 
   const [search, setSearch] = useState("");
@@ -299,7 +301,7 @@ export function CustomerTable() {
                   variant="outline"
                   size="icon"
                   className="h-8 w-8 rounded-full"
-                  onClick={() => router.push(`/admin/customers/${customer.id}`)}
+                  onClick={() => router.push(`${basePath}/customers/${customer.id}`)}
                   title="View details"
                 >
                   <Eye className="h-4 w-4" />

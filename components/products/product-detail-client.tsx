@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 import { useProducts } from "@/hooks/use-products";
@@ -21,6 +21,8 @@ type ProductDetailClientProps = {
 
 export function ProductDetailClient({ productId }: ProductDetailClientProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const basePath = pathname?.startsWith("/staff") ? "/staff" : "/admin";
   const { products, loading: listLoading, error: listError } = useProducts();
 
   const productFromList = useMemo(
@@ -48,7 +50,7 @@ if (listLoading) {
         <Button
           variant="outline"
           className="rounded-full"
-          onClick={() => router.push("/admin/products")}
+          onClick={() => router.push(`${basePath}/products`)}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to products
@@ -62,7 +64,7 @@ if (listLoading) {
       <Button
         variant="ghost"
         className="rounded-full text-sm text-primary hover:bg-primary/10"
-        onClick={() => router.push("/admin/products")}
+        onClick={() => router.push(`${basePath}/products`)}
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to products

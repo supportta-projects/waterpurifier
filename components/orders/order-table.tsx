@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   Ban,
   CalendarClock,
@@ -64,6 +64,8 @@ type OrderFormErrors = {
 
 export function OrderTable() {
   const router = useRouter();
+  const pathname = usePathname();
+  const basePath = pathname?.startsWith("/staff") ? "/staff" : "/admin";
   const { orders, loading, saving, error, handleCreate, handleUpdateStatus, handleDelete } =
     useOrders();
   const {
@@ -352,7 +354,7 @@ export function OrderTable() {
                   variant="outline"
                   size="icon"
                   className="h-8 w-8 rounded-full"
-                  onClick={() => router.push(`/admin/orders/${order.id}`)}
+                  onClick={() => router.push(`${basePath}/orders/${order.id}`)}
                 >
                   <Eye className="h-4 w-4" />
                   <span className="sr-only">View</span>

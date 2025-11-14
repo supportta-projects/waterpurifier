@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Search, SlidersHorizontal, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -60,6 +60,8 @@ const emptyForm: ProductFormState = {
 
 export function ProductTable() {
   const router = useRouter();
+  const pathname = usePathname();
+  const basePath = pathname?.startsWith("/staff") ? "/staff" : "/admin";
   const { products, loading, saving, error, handleCreate, handleUpdate, handleDelete } =
     useProducts();
 
@@ -207,7 +209,7 @@ export function ProductTable() {
   };
 
   const handleNavigate = (id: string) => {
-    router.push(`/admin/products/${id}`);
+    router.push(`${basePath}/products/${id}`);
   };
 
   return (
