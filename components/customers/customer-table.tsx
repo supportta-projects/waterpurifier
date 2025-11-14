@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PenSquare, Plus, Search, SlidersHorizontal } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Eye, PenSquare, Plus, Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 import { SimpleTable } from "@/components/data/simple-table";
@@ -46,6 +47,7 @@ const emptyForm: CustomerFormState = {
 };
 
 export function CustomerTable() {
+  const router = useRouter();
   const { customers, loading, saving, error, handleCreate, handleUpdate } = useCustomers();
 
   const [search, setSearch] = useState("");
@@ -295,12 +297,23 @@ export function CustomerTable() {
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
-                  size="sm"
-                  className="rounded-full"
-                  onClick={() => openEditDialog(customer)}
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
+                  onClick={() => router.push(`/admin/customers/${customer.id}`)}
+                  title="View details"
                 >
-                  <PenSquare className="mr-1.5 h-4 w-4" />
-                  Edit
+                  <Eye className="h-4 w-4" />
+                  <span className="sr-only">View details</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
+                  onClick={() => openEditDialog(customer)}
+                  title="Edit"
+                >
+                  <PenSquare className="h-4 w-4" />
+                  <span className="sr-only">Edit</span>
                 </Button>
                 <Button
                   variant={customer.isActive ? "ghost" : "secondary"}

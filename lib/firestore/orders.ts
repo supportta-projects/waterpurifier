@@ -9,6 +9,7 @@ import {
   query,
   serverTimestamp,
   updateDoc,
+  where,
   type DocumentData,
   type DocumentSnapshot,
 } from "firebase/firestore";
@@ -46,6 +47,21 @@ export async function fetchOrders(): Promise<Order[]> {
   const ordersQuery = query(collection(db, "orders"), orderBy("createdAt", "desc"));
   const snapshot = await getDocs(ordersQuery);
   return snapshot.docs.map((docSnapshot) => mapOrderSnapshot(docSnapshot));
+}
+
+export async function fetchOrdersByCustomerId(customerId: string): Promise<Order[]> {
+  const ordersQuery = query(
+    collection(db, "orders"),
+    where("customerId", "==", customerId),
+  );
+  const snapshot = await getDocs(ordersQuery);
+  const orders = snapshot.docs.map((docSnapshot) => mapOrderSnapshot(docSnapshot));
+  // Sort in memory to avoid requiring a composite index
+  return orders.sort((a, b) => {
+    const dateA = new Date(a.createdAt).getTime();
+    const dateB = new Date(b.createdAt).getTime();
+    return dateB - dateA; // Descending order (newest first)
+  });
 }
 
 export async function createOrder(payload: CreateOrderInput): Promise<Order> {

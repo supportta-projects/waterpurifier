@@ -6,7 +6,7 @@ import {
   BadgeCheck,
   CalendarClock,
   ClipboardList,
-  Filter,
+  Eye,
   Loader2,
   RotateCw,
   Search,
@@ -16,6 +16,7 @@ import { toast } from "sonner";
 
 import { SimpleTable } from "@/components/data/simple-table";
 import { ServiceFilters } from "@/components/services/service-filters";
+import { CustomerSelectorWithOrders } from "@/components/services/customer-selector-with-orders";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,9 +41,11 @@ import { useProducts } from "@/hooks/use-products";
 import { useServices } from "@/hooks/use-services";
 import { useTechnicians } from "@/hooks/use-technicians";
 import type { CreateServiceInput, Service, ServiceStatus, UpdateServiceInput } from "@/types/service";
+import type { Order } from "@/types/order";
 
 type ServiceTableProps = {
   variant: "all" | "latest";
+  initialDateFilter?: string;
 };
 
 const statusMeta: Record<ServiceStatus, { label: string; variant: "default" | "secondary" | "success" | "destructive" | "outline" }> = {
@@ -58,7 +61,7 @@ type ServiceFormErrors = {
   scheduledDate: string;
 };
 
-export function ServiceTable({ variant }: ServiceTableProps) {
+export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) {
   const router = useRouter();
 
   const {
@@ -77,6 +80,9 @@ export function ServiceTable({ variant }: ServiceTableProps) {
   const [status, setStatus] = useState<string>("ALL");
   const [serviceType, setServiceType] = useState<string>("ALL");
   const [technicianId, setTechnicianId] = useState<string>("ALL");
+  const [dateFilter, setDateFilter] = useState<string>(initialDateFilter ?? "ALL");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
   const [assignDialog, setAssignDialog] = useState<{
     open: boolean;
     service: Service | null;
@@ -87,6 +93,7 @@ export function ServiceTable({ variant }: ServiceTableProps) {
   const [assignTechnicianId, setAssignTechnicianId] = useState<string>("");
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createMode, setCreateMode] = useState<"manual" | "quarterly">("manual");
   const [formValues, setFormValues] = useState<CreateServiceInput>({
     customerId: "",
     customerName: "",
@@ -123,6 +130,39 @@ export function ServiceTable({ variant }: ServiceTableProps) {
       result = result.filter((service) => service.technicianId === technicianId);
     }
 
+    // Date filtering
+    if (dateFilter === "UPCOMING") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      result = result.filter((service) => {
+        if (!service.scheduledDate) return false;
+        const scheduledDate = new Date(service.scheduledDate);
+        scheduledDate.setHours(0, 0, 0, 0);
+        return scheduledDate >= today;
+      });
+    } else if (dateFilter === "RANGE") {
+      if (dateFrom) {
+        const fromDate = new Date(dateFrom);
+        fromDate.setHours(0, 0, 0, 0);
+        result = result.filter((service) => {
+          if (!service.scheduledDate) return false;
+          const scheduledDate = new Date(service.scheduledDate);
+          scheduledDate.setHours(0, 0, 0, 0);
+          return scheduledDate >= fromDate;
+        });
+      }
+      if (dateTo) {
+        const toDate = new Date(dateTo);
+        toDate.setHours(23, 59, 59, 999);
+        result = result.filter((service) => {
+          if (!service.scheduledDate) return false;
+          const scheduledDate = new Date(service.scheduledDate);
+          scheduledDate.setHours(0, 0, 0, 0);
+          return scheduledDate <= toDate;
+        });
+      }
+    }
+
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
@@ -134,13 +174,16 @@ export function ServiceTable({ variant }: ServiceTableProps) {
     }
 
     return result;
-  }, [services, variant, status, serviceType, technicianId, search]);
+  }, [services, variant, status, serviceType, technicianId, search, dateFilter, dateFrom, dateTo]);
 
   const resetFilters = () => {
     setSearch("");
     setStatus("ALL");
     setServiceType("ALL");
     setTechnicianId("ALL");
+    setDateFilter("ALL");
+    setDateFrom("");
+    setDateTo("");
   };
 
   const resetForm = () => {
@@ -160,9 +203,26 @@ export function ServiceTable({ variant }: ServiceTableProps) {
     });
   };
 
-  const openCreateDialog = () => {
+  const openCreateDialog = (mode: "manual" | "quarterly" = "manual") => {
     resetForm();
+    setCreateMode(mode);
+    setFormValues((prev) => ({
+      ...prev,
+      serviceType: mode === "manual" ? "MANUAL" : "QUARTERLY",
+    }));
     setCreateDialogOpen(true);
+  };
+
+  const handleOrderSelect = (order: Order) => {
+    setFormValues((prev) => ({
+      ...prev,
+      customerId: order.customerId,
+      customerName: order.customerName,
+      productId: order.productId,
+      productName: order.productName,
+      serviceType: "MANUAL",
+    }));
+    toast.success("Order selected. Please set the scheduled date and submit.");
   };
 
   const validateForm = () => {
@@ -249,19 +309,29 @@ export function ServiceTable({ variant }: ServiceTableProps) {
       <div className="flex flex-col gap-3 rounded-[2rem] border border-border/40 bg-white/90 px-6 py-5 shadow-soft md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-primary">
-            {variant === "latest" ? "Latest Services" : "Service Management"}
+            {dateFilter === "UPCOMING"
+              ? "Upcoming Services"
+              : variant === "latest"
+                ? "Latest Services"
+                : "Service Management"}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {variant === "latest"
-              ? "Quick view of upcoming and recently assigned services."
-              : "Track quarterly and manual services, assign technicians, and update progress."}
+            {dateFilter === "UPCOMING"
+              ? "View all services scheduled for today and future dates."
+              : variant === "latest"
+                ? "Quick view of upcoming and recently assigned services."
+                : "Track quarterly and manual services, assign technicians, and update progress."}
           </p>
         </div>
-        {variant === "all" ? (
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" className="rounded-full" onClick={openCreateDialog}>
+      {variant === "all" ? (
+        <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="rounded-full" onClick={() => openCreateDialog("manual")}>
               <ClipboardList className="mr-2 h-4 w-4" />
-              Schedule Service
+              Manual Service
+            </Button>
+            <Button variant="outline" className="rounded-full" onClick={() => openCreateDialog("quarterly")}>
+              <CalendarClock className="mr-2 h-4 w-4" />
+              Quarterly Service
             </Button>
           </div>
         ) : null}
@@ -278,6 +348,12 @@ export function ServiceTable({ variant }: ServiceTableProps) {
           technicianId={technicianId}
           onTechnicianChange={setTechnicianId}
           technicians={technicians}
+          dateFilter={dateFilter}
+          onDateFilterChange={setDateFilter}
+          dateFrom={dateFrom}
+          onDateFromChange={setDateFrom}
+          dateTo={dateTo}
+          onDateToChange={setDateTo}
           onReset={resetFilters}
         />
       ) : (
@@ -392,7 +468,7 @@ export function ServiceTable({ variant }: ServiceTableProps) {
                   className="h-8 w-8 rounded-full"
                   onClick={() => router.push(`/admin/services/${service.id}`)}
                 >
-                  <Filter className="h-4 w-4" />
+                  <Eye className="h-4 w-4" />
                   <span className="sr-only">View service</span>
                 </Button>
                 {service.status === "AVAILABLE" ? (
@@ -473,110 +549,119 @@ export function ServiceTable({ variant }: ServiceTableProps) {
       ) : null}
 
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Schedule Service</DialogTitle>
+            <DialogTitle>
+              Schedule {createMode === "manual" ? "Manual" : "Quarterly"} Service
+            </DialogTitle>
             <DialogDescription>
-              Choose a customer and product to create a service visit. Technicians can be assigned
-              after scheduling.
+              {createMode === "manual"
+                ? "Select a customer to view their details and order history. Choose an order to create a manual service."
+                : "Choose a customer and product to create a quarterly service visit. Technicians can be assigned after scheduling."}
             </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleCreateSubmit}>
-            <div className="grid gap-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Customer
-              </label>
-              <Select
-                value={formValues.customerId}
-                onValueChange={(value) =>
-                  setFormValues((prev) => ({ ...prev, customerId: value }))
-                }
+            {createMode === "manual" ? (
+              <CustomerSelectorWithOrders
+                selectedCustomerId={formValues.customerId}
+                onCustomerChange={(customerId) => {
+                  const customer = customers.find((c) => c.id === customerId);
+                  setFormValues((prev) => ({
+                    ...prev,
+                    customerId,
+                    customerName: customer?.name ?? "",
+                    productId: "",
+                    productName: "",
+                  }));
+                }}
+                onSelectOrder={handleOrderSelect}
                 disabled={isCreateDisabled}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select customer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map((customer) => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.name} ({customer.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {formErrors.customerId ? (
-                <p className="text-xs text-destructive">{formErrors.customerId}</p>
-              ) : null}
-            </div>
+              />
+            ) : (
+              <>
+                <div className="grid gap-2">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Customer
+                  </label>
+                  <Select
+                    value={formValues.customerId}
+                    onValueChange={(value) => {
+                      const customer = customers.find((c) => c.id === value);
+                      setFormValues((prev) => ({
+                        ...prev,
+                        customerId: value,
+                        customerName: customer?.name ?? "",
+                      }));
+                    }}
+                    disabled={isCreateDisabled}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select customer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {customers.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.id}>
+                          {customer.name} ({customer.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formErrors.customerId ? (
+                    <p className="text-xs text-destructive">{formErrors.customerId}</p>
+                  ) : null}
+                </div>
+
+                <div className="grid gap-2">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Product
+                  </label>
+                  <Select
+                    value={formValues.productId}
+                    onValueChange={(value) => {
+                      const product = products.find((p) => p.id === value);
+                      setFormValues((prev) => ({
+                        ...prev,
+                        productId: value,
+                        productName: product?.name ?? "",
+                      }));
+                    }}
+                    disabled={isCreateDisabled}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select product" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {products.map((product) => (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formErrors.productId ? (
+                    <p className="text-xs text-destructive">{formErrors.productId}</p>
+                  ) : null}
+                </div>
+              </>
+            )}
 
             <div className="grid gap-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Product
+                Scheduled Date
               </label>
-              <Select
-                value={formValues.productId}
-                onValueChange={(value) =>
-                  setFormValues((prev) => ({ ...prev, productId: value }))
+              <Input
+                type="date"
+                value={formValues.scheduledDate}
+                onChange={(event) =>
+                  setFormValues((prev) => ({
+                    ...prev,
+                    scheduledDate: event.target.value,
+                  }))
                 }
-                disabled={isCreateDisabled}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select product" />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {formErrors.productId ? (
-                <p className="text-xs text-destructive">{formErrors.productId}</p>
+              />
+              {formErrors.scheduledDate ? (
+                <p className="text-xs text-destructive">{formErrors.scheduledDate}</p>
               ) : null}
-            </div>
-
-            <div className="grid gap-2 md:grid-cols-2 md:gap-4">
-              <div className="grid gap-2">
-                <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Service Type
-                </label>
-                <Select
-                  value={formValues.serviceType}
-                  onValueChange={(value) =>
-                    setFormValues((prev) => ({
-                      ...prev,
-                      serviceType: value as CreateServiceInput["serviceType"],
-                    }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="MANUAL">Manual</SelectItem>
-                    <SelectItem value="QUARTERLY">Quarterly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Scheduled Date
-                </label>
-                <Input
-                  type="date"
-                  value={formValues.scheduledDate}
-                  onChange={(event) =>
-                    setFormValues((prev) => ({
-                      ...prev,
-                      scheduledDate: event.target.value,
-                    }))
-                  }
-                />
-                {formErrors.scheduledDate ? (
-                  <p className="text-xs text-destructive">{formErrors.scheduledDate}</p>
-                ) : null}
-              </div>
             </div>
 
             <div className="grid gap-2">
