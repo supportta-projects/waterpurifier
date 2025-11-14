@@ -242,7 +242,7 @@ export function CustomerTable() {
             render: (customer) => (
               <div className="space-y-1">
                 <p className="text-sm font-semibold text-primary">{customer.name}</p>
-                <p className="text-xs text-muted-foreground">ID: {customer.id}</p>
+                <p className="text-xs text-muted-foreground">ID: {customer.customId}</p>
               </div>
             ),
           },

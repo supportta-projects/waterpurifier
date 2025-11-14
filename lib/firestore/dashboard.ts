@@ -17,6 +17,7 @@ import type { InvoiceStatus } from "@/types/invoice";
 
 type ServiceSnapshotItem = {
   id: string;
+  customId?: string;
   customerName: string;
   productName: string;
   technicianName: string | null;
@@ -99,6 +100,7 @@ export async function fetchAdminDashboardMetrics(): Promise<AdminDashboardMetric
     const data = doc.data();
     return {
       id: doc.id,
+      customId: (data.customId as string) ?? undefined,
       customerName: (data.customerName as string) ?? "Unknown customer",
       productName: (data.productName as string) ?? "Unknown product",
       technicianName: (data.technicianName as string) ?? null,

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createCustomer, fetchCustomers, updateCustomer } from "@/lib/firestore/customers";
 import type { Customer } from "@/types/customer";
 
-type CustomerInput = Omit<Customer, "id" | "createdAt" | "updatedAt">;
+type CustomerInput = Omit<Customer, "id" | "customId" | "createdAt" | "updatedAt">;
 
 type UseCustomersReturn = {
   customers: Customer[];

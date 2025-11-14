@@ -192,7 +192,7 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
                       className="flex flex-col gap-2 rounded-2xl border border-border/40 bg-white/80 px-5 py-4 shadow-inner shadow-black/5 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="space-y-1">
-                        <p className="text-sm font-semibold text-primary">#{service.id}</p>
+                        <p className="text-sm font-semibold text-primary">#{service.customId ?? service.id}</p>
                         <div className="text-sm text-muted-foreground">
                           <span className="font-medium text-foreground">{service.customerName}</span>
                           {" · "}

@@ -120,7 +120,7 @@ export function InvoiceTemplateClient({ invoiceId }: InvoiceTemplateClientProps)
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wide text-gray-700 mb-2">Bill To:</h3>
               <p className="text-sm font-semibold text-gray-900">{invoice.customerName}</p>
-              <p className="text-xs text-gray-600 mt-1">Customer ID: {invoice.customerId}</p>
+              <p className="text-xs text-gray-600 mt-1">Customer ID: {invoice.customerCustomId ?? invoice.customerId}</p>
             </div>
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wide text-gray-700 mb-2">From:</h3>
@@ -146,8 +146,8 @@ export function InvoiceTemplateClient({ invoiceId }: InvoiceTemplateClientProps)
                 <tr className="border-b border-gray-200">
                   <td className="px-4 py-4">
                     <p className="text-sm font-semibold text-gray-900">{invoice.productName}</p>
-                    <p className="text-xs text-gray-600 mt-1">Product ID: {invoice.productId}</p>
-                    <p className="text-xs text-gray-600">Order ID: {invoice.orderId}</p>
+                    <p className="text-xs text-gray-600 mt-1">Product ID: {invoice.productCustomId ?? invoice.productId}</p>
+                    <p className="text-xs text-gray-600">Order ID: {invoice.orderCustomId ?? invoice.orderId}</p>
                   </td>
                   <td className="px-4 py-4 text-right">
                     <p className="text-sm font-semibold text-gray-900">

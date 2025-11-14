@@ -235,7 +235,7 @@ export function StaffDashboardClient({ initialData }: StaffDashboardClientProps)
                       className="rounded-2xl border border-border/30 bg-gradient-soft px-4 py-4 text-sm"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-primary font-semibold">{order.id.slice(0, 8)}</span>
+                        <span className="text-primary font-semibold">{order.customId ?? order.id.slice(0, 8)}</span>
                         <span className="text-xs text-muted-foreground">
                           {formatDate(order.createdAt)}
                         </span>

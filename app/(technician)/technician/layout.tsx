@@ -39,11 +39,6 @@ export default function TechnicianLayout({ children }: TechnicianLayoutProps) {
             title="Technician Hub"
             subtitle="Daily Schedule"
             items={technicianNavItems}
-            footer={
-              <div className="rounded-2xl bg-white/70 p-4 text-xs text-muted-foreground shadow-inner">
-                Accept new jobs, track progress, and share invoices with customers.
-              </div>
-            }
             userName={profile?.name ?? user?.email ?? "Technician"}
             userEmail={user?.email ?? ""}
             userRole="Technician"

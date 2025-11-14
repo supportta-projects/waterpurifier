@@ -281,7 +281,7 @@ export function OrderTable() {
             render: (order) => (
               <div className="space-y-1">
                 <p className="text-sm font-semibold text-primary">{order.customerName}</p>
-                <p className="text-xs text-muted-foreground">Order #{order.id.slice(0, 8)}</p>
+                <p className="text-xs text-muted-foreground">Order #{order.customId}</p>
               </div>
             ),
           },

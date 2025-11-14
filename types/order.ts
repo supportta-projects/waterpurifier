@@ -2,9 +2,12 @@ export type OrderStatus = "PENDING" | "FULFILLED" | "CANCELLED";
 
 export type Order = {
   id: string;
+  customId: string;
   customerId: string;
+  customerCustomId?: string;
   customerName: string;
   productId: string;
+  productCustomId?: string;
   productName: string;
   quantity: number;
   unitPrice: number;

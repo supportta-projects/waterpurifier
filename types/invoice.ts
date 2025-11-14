@@ -2,10 +2,14 @@ export type InvoiceStatus = "PENDING" | "SENT" | "PAID" | "CANCELLED";
 
 export type Invoice = {
   id: string;
+  customId: string;
   orderId: string;
+  orderCustomId?: string;
   customerId: string;
+  customerCustomId?: string;
   customerName: string;
   productId: string;
+  productCustomId?: string;
   productName: string;
   totalAmount: number;
   number: string;
@@ -17,9 +21,12 @@ export type Invoice = {
 
 export type CreateInvoiceInput = {
   orderId: string;
+  orderCustomId?: string;
   customerId: string;
+  customerCustomId?: string;
   customerName: string;
   productId: string;
+  productCustomId?: string;
   productName: string;
   totalAmount: number;
 };

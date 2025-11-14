@@ -14,6 +14,9 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
+import { generateCustomId } from "@/lib/utils/custom-id";
+import { fetchCustomerById } from "./customers";
+import { fetchProduct } from "./products";
 import type {
   CreateServiceInput,
   Service,
@@ -31,9 +34,12 @@ function mapServiceSnapshot(snapshot: DocumentSnapshot<DocumentData>): Service {
 
   return {
     id: snapshot.id,
+    customId: (data.customId as string) ?? undefined,
     customerId: data.customerId as string,
+    customerCustomId: data.customerCustomId as string | undefined,
     customerName: data.customerName as string,
     productId: data.productId as string,
+    productCustomId: data.productCustomId as string | undefined,
     productName: data.productName as string,
     technicianId: data.technicianId ?? null,
     technicianName: data.technicianName ?? null,
@@ -83,8 +89,18 @@ export async function fetchServices(options?: {
 }
 
 export async function createService(payload: CreateServiceInput) {
+  // Fetch customer and product to get their custom IDs
+  const [customer, product] = await Promise.all([
+    fetchCustomerById(payload.customerId).catch(() => null),
+    fetchProduct(payload.productId).catch(() => null),
+  ]);
+
+  const customId = generateCustomId("SRV");
   const docRef = await addDoc(collection(db, "services"), {
     ...payload,
+    customId,
+    customerCustomId: customer?.customId,
+    productCustomId: product?.customId,
     status: "AVAILABLE" satisfies ServiceStatus,
     technicianId: null,
     technicianName: null,

@@ -15,7 +15,10 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
+import { generateCustomId } from "@/lib/utils/custom-id";
 import { createInvoice, deleteInvoice } from "@/lib/firestore/invoices";
+import { fetchCustomerById } from "./customers";
+import { fetchProduct } from "./products";
 import type { CreateOrderInput, Order, OrderStatus } from "@/types/order";
 
 function mapOrderSnapshot(snapshot: DocumentSnapshot<DocumentData>): Order {
@@ -27,9 +30,12 @@ function mapOrderSnapshot(snapshot: DocumentSnapshot<DocumentData>): Order {
 
   return {
     id: snapshot.id,
+    customId: (data.customId as string) ?? snapshot.id,
     customerId: data.customerId as string,
+    customerCustomId: data.customerCustomId as string | undefined,
     customerName: data.customerName as string,
     productId: data.productId as string,
+    productCustomId: data.productCustomId as string | undefined,
     productName: data.productName as string,
     quantity: data.quantity as number,
     unitPrice: data.unitPrice as number,
@@ -67,9 +73,19 @@ export async function fetchOrdersByCustomerId(customerId: string): Promise<Order
 export async function createOrder(payload: CreateOrderInput): Promise<Order> {
   const totalAmount = payload.unitPrice * payload.quantity;
   const ordersRef = collection(db, "orders");
+  
+  // Fetch customer and product to get their custom IDs
+  const [customer, product] = await Promise.all([
+    fetchCustomerById(payload.customerId).catch(() => null),
+    fetchProduct(payload.productId).catch(() => null),
+  ]);
 
+  const customId = generateCustomId("ORD");
   const docRef = await addDoc(ordersRef, {
     ...payload,
+    customId,
+    customerCustomId: customer?.customId,
+    productCustomId: product?.customId,
     totalAmount,
     status: "PENDING" satisfies OrderStatus,
     invoiceId: null,
@@ -81,9 +97,12 @@ export async function createOrder(payload: CreateOrderInput): Promise<Order> {
 
   const invoice = await createInvoice({
     orderId: docRef.id,
+    orderCustomId: customId,
     customerId: payload.customerId,
+    customerCustomId: customer?.customId,
     customerName: payload.customerName,
     productId: payload.productId,
+    productCustomId: product?.customId,
     productName: payload.productName,
     totalAmount,
   });

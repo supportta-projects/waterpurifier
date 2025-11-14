@@ -4,10 +4,15 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LucideIcon, LogOut } from "lucide-react";
+import { LucideIcon, LogOut, User } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,7 +36,6 @@ type SidebarProps = {
   title: string;
   subtitle?: string;
   items: SidebarItem[];
-  footer?: ReactNode;
   action?: ReactNode;
   userName?: string;
   userEmail?: string;
@@ -44,7 +48,6 @@ export function Sidebar({
   title,
   subtitle,
   items,
-  footer,
   action,
   userName,
   userEmail,
@@ -62,7 +65,7 @@ export function Sidebar({
         className,
       )}
     >
-      <div className="flex-1 space-y-6 overflow-y-auto">
+      <div className="flex-1 space-y-6 overflow-hidden">
         <div className="rounded-2xl bg-gradient-soft px-4 py-5">
           <div className="text-xs font-medium uppercase tracking-wide text-primary/80">
             {subtitle ?? "Water Purifier"}
@@ -103,29 +106,42 @@ export function Sidebar({
         </nav>
       </div>
 
-      <div className="mt-auto space-y-4 pt-4">
-        {footer ? <div>{footer}</div> : null}
-        <div className="rounded-2xl border border-border/40 bg-white/80 p-4 shadow-inner shadow-black/5">
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Signed in as
-          </div>
-          <div className="mt-2 text-sm font-semibold text-foreground">
-            {userName ?? "User"}
-          </div>
-          <div className="text-xs text-muted-foreground">{userEmail}</div>
-          {userRole ? (
-            <div className="mt-2 inline-flex rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
-              {userRole}
-            </div>
-          ) : null}
-          <Button
-            variant="outline"
-            className="mt-4 w-full justify-center rounded-full text-sm"
-            onClick={() => setShowLogoutDialog(true)}
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
-          </Button>
+      <div className="mt-auto pt-4">
+        <div className="flex items-center justify-between gap-2 rounded-2xl border border-border/40 bg-white/80 px-3 py-2.5 shadow-inner shadow-black/5">
+          <span className="text-sm font-semibold text-foreground">
+            {userRole ?? "User"}
+          </span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 rounded-full border-2 border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/30 transition-colors"
+                title="User menu"
+              >
+                <User className="h-4 w-4 text-primary" />
+                <span className="sr-only">User menu</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64" align="end">
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {userName ?? "User"}
+                  </p>
+                  <p className="text-sm text-foreground">{userEmail}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  className="w-full justify-center rounded-full text-sm"
+                  onClick={() => setShowLogoutDialog(true)}
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 

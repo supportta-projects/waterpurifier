@@ -41,11 +41,6 @@ export default function StaffLayout({ children }: StaffLayoutProps) {
             title="Staff Workspace"
             subtitle="Daily Operations"
             items={staffNavItems}
-            footer={
-              <div className="rounded-2xl bg-white/70 p-4 text-xs text-muted-foreground shadow-inner">
-                Manage orders, schedule services, and keep customers in sync.
-              </div>
-            }
             userName={profile?.name ?? user?.email ?? "Staff Member"}
             userEmail={user?.email ?? ""}
             userRole="Staff"
@@ -58,11 +53,11 @@ export default function StaffLayout({ children }: StaffLayoutProps) {
           <Topbar
             title="Staff Dashboard"
             description="Oversee orders, services, and customer follow-ups."
-            actions={
-              <Button variant="subtle" className="hidden md:inline-flex">
-                New Order
-              </Button>
-            }
+            // actions={
+            //   <Button variant="subtle" className="hidden md:inline-flex">
+            //     New Order
+            //   </Button>
+            // }
           />
         }
       >

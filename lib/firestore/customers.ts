@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
+import { generateCustomId } from "@/lib/utils/custom-id";
 import type { Customer } from "@/types/customer";
 
 function mapCustomerSnapshot(snapshot: DocumentSnapshot<DocumentData>): Customer {
@@ -24,6 +25,7 @@ function mapCustomerSnapshot(snapshot: DocumentSnapshot<DocumentData>): Customer
 
   return {
     id: snapshot.id,
+    customId: (data.customId as string) ?? snapshot.id,
     name: data.name ?? "",
     email: data.email ?? "",
     phone: data.phone ?? "",
@@ -40,9 +42,19 @@ export async function fetchCustomers(): Promise<Customer[]> {
   return snapshot.docs.map((docSnapshot) => mapCustomerSnapshot(docSnapshot));
 }
 
-export async function createCustomer(payload: Omit<Customer, "id" | "createdAt" | "updatedAt">) {
+export async function fetchCustomerById(id: string): Promise<Customer | null> {
+  const snapshot = await getDoc(doc(db, "customers", id));
+  if (!snapshot.exists()) {
+    return null;
+  }
+  return mapCustomerSnapshot(snapshot);
+}
+
+export async function createCustomer(payload: Omit<Customer, "id" | "customId" | "createdAt" | "updatedAt">) {
+  const customId = generateCustomId("CUST");
   const ref = await addDoc(collection(db, "customers"), {
     ...payload,
+    customId,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

@@ -4,9 +4,12 @@ export type ServiceType = "MANUAL" | "QUARTERLY";
 
 export type Service = {
   id: string;
+  customId?: string;
   customerId: string;
+  customerCustomId?: string;
   customerName: string;
   productId: string;
+  productCustomId?: string;
   productName: string;
   technicianId?: string | null;
   technicianName?: string | null;

@@ -43,16 +43,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             title="Admin Control"
             subtitle="Operations HQ"
             items={adminNavItems}
-            action={
-              <Button size="sm" className="w-full">
-                Quick Create
-              </Button>
-            }
-            footer={
-              <div className="rounded-2xl bg-white/70 p-4 text-xs text-muted-foreground shadow-inner">
-                Monitor quarterly services, assign technicians, and keep customers hydrated.
-              </div>
-            }
             userName={profile?.name ?? user?.email ?? "Admin"}
             userEmail={user?.email ?? ""}
             userRole="Administrator"

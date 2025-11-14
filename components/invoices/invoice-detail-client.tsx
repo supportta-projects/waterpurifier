@@ -192,7 +192,7 @@ export function InvoiceDetailClient({ invoiceId }: InvoiceDetailClientProps) {
               </div>
               <div className="mt-3 text-sm text-foreground">
                 <p>{invoice.customerName}</p>
-                <p className="text-xs text-muted-foreground">Customer ID: {invoice.customerId}</p>
+                <p className="text-xs text-muted-foreground">Customer ID: {invoice.customerCustomId ?? invoice.customerId}</p>
               </div>
             </div>
 
@@ -203,7 +203,7 @@ export function InvoiceDetailClient({ invoiceId }: InvoiceDetailClientProps) {
               </div>
               <div className="mt-3 text-sm text-foreground">
                 <p>{invoice.productName}</p>
-                <p className="text-xs text-muted-foreground">Product ID: {invoice.productId}</p>
+                <p className="text-xs text-muted-foreground">Product ID: {invoice.productCustomId ?? invoice.productId}</p>
                 <p className="mt-2 font-semibold text-primary">
                   {formatCurrency(invoice.totalAmount)}
                 </p>
@@ -295,7 +295,7 @@ export function InvoiceDetailClient({ invoiceId }: InvoiceDetailClientProps) {
               <div className="flex items-center gap-2">
                 <Receipt className="h-4 w-4 text-primary/80" />
                 Order ID:{" "}
-                <span className="font-semibold text-foreground">{invoice.orderId}</span>
+                <span className="font-semibold text-foreground">{invoice.orderCustomId ?? invoice.orderId}</span>
               </div>
             </div>
           </CardContent>

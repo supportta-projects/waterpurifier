@@ -77,7 +77,7 @@ export function OrderDetailClient({ orderId }: OrderDetailClientProps) {
         <Card className="rounded-[2rem] border border-border/40 bg-white/90 shadow-soft">
           <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <CardTitle className="text-2xl text-primary">Order #{order.id.slice(0, 10)}</CardTitle>
+              <CardTitle className="text-2xl text-primary">Order #{order.customId}</CardTitle>
               <CardDescription>
                 Created{" "}
                 {order.createdAt
@@ -98,7 +98,7 @@ export function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               </div>
               <div className="mt-3 text-sm text-foreground">
                 <p>{order.customerName}</p>
-                <p className="text-xs text-muted-foreground">Customer ID: {order.customerId}</p>
+                <p className="text-xs text-muted-foreground">Customer ID: {order.customerCustomId ?? order.customerId}</p>
               </div>
             </div>
 
@@ -109,7 +109,7 @@ export function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               </div>
               <div className="mt-3 grid gap-2 text-sm text-foreground md:grid-cols-2">
                 <p>{order.productName}</p>
-                <p className="text-muted-foreground">Product ID: {order.productId}</p>
+                <p className="text-muted-foreground">Product ID: {order.productCustomId ?? order.productId}</p>
                 <p>
                   Quantity: <span className="font-semibold">{order.quantity}</span>
                 </p>

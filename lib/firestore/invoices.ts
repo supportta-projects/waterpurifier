@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
+import { generateCustomId } from "@/lib/utils/custom-id";
 import type { CreateInvoiceInput, Invoice, InvoiceStatus } from "@/types/invoice";
 
 const shareBaseUrl = process.env.NEXT_PUBLIC_INVOICE_SHARE_BASE_URL ?? "";
@@ -63,10 +64,14 @@ function mapInvoiceSnapshot(snapshot: DocumentSnapshot<DocumentData>): Invoice {
 
   return {
     id: snapshot.id,
+    customId: (data.customId as string) ?? snapshot.id,
     orderId: data.orderId as string,
+    orderCustomId: data.orderCustomId as string | undefined,
     customerId: data.customerId as string,
+    customerCustomId: data.customerCustomId as string | undefined,
     customerName: data.customerName as string,
     productId: data.productId as string,
+    productCustomId: data.productCustomId as string | undefined,
     productName: data.productName as string,
     totalAmount: data.totalAmount as number,
     number: data.number as string,
@@ -89,12 +94,13 @@ export async function fetchInvoiceById(id: string): Promise<Invoice | null> {
 }
 
 export async function createInvoice(payload: CreateInvoiceInput) {
-  const now = Date.now();
-  const invoiceNumber = `INV-${now}`;
+  const customId = generateCustomId("INV");
+  const invoiceNumber = customId; // Use customId as invoice number
   const invoicesRef = collection(db, "invoices");
 
   const docRef = await addDoc(invoicesRef, {
     ...payload,
+    customId,
     number: invoiceNumber,
     status: "PENDING" satisfies InvoiceStatus,
     shareUrl: "",

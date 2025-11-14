@@ -2,6 +2,7 @@ export type ProductStatus = "ACTIVE" | "DISCONTINUED" | "COMING_SOON";
 
 export type Product = {
   id: string;
+  customId: string;
   name: string;
   model: string;
   description: string;

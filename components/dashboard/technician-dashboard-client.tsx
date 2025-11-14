@@ -192,7 +192,7 @@ export function TechnicianDashboardClient({ initialData }: TechnicianDashboardCl
                       className="flex flex-col gap-3 rounded-2xl border border-border/40 bg-gradient-soft px-5 py-4 shadow-inner shadow-primary/5 md:flex-row md:items-center md:justify-between"
                     >
                       <div className="flex flex-col gap-1">
-                        <span className="text-sm font-semibold text-primary">{slot.id.slice(0, 8)}</span>
+                        <span className="text-sm font-semibold text-primary">{slot.customId ?? slot.id.slice(0, 8)}</span>
                         <span className="text-sm text-foreground">{slot.customerName}</span>
                         <span className="text-xs text-muted-foreground">{slot.productName}</span>
                         {slot.address ? (
@@ -240,7 +240,7 @@ export function TechnicianDashboardClient({ initialData }: TechnicianDashboardCl
                         </span>
                       </div>
                       <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                        <span>Service #{completion.id.slice(0, 8)}</span>
+                        <span>Service #{completion.customId ?? completion.id.slice(0, 8)}</span>
                         <span className="font-semibold text-primary/80">Completed</span>
                       </div>
                     </div>

@@ -16,6 +16,7 @@ import type { ServiceStatus } from "@/types/service";
 
 type ServiceSnapshotItem = {
   id: string;
+  customId?: string;
   customerName: string;
   productName: string;
   status: ServiceStatus;
@@ -96,6 +97,7 @@ export async function fetchTechnicianDashboardMetrics(
     if (scheduled && scheduled >= today) {
       todayScheduleRaw.push({
         id: doc.id,
+        customId: (data.customId as string) ?? undefined,
         customerName: (data.customerName as string) ?? "Unknown customer",
         productName: (data.productName as string) ?? "Unknown product",
         status: (data.status as ServiceStatus) ?? "ASSIGNED",
@@ -147,6 +149,7 @@ export async function fetchTechnicianDashboardMetrics(
     if (completedDate && completedDate >= startOfWeek) {
       recentCompletionsRaw.push({
         id: doc.id,
+        customId: (data.customId as string) ?? undefined,
         customerName: (data.customerName as string) ?? "Unknown customer",
         productName: (data.productName as string) ?? "Unknown product",
         status: "COMPLETED" as ServiceStatus,

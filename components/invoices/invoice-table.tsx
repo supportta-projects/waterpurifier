@@ -242,7 +242,7 @@ export function InvoiceTable() {
             render: (invoice) => (
               <div className="space-y-1">
                 <p className="text-sm font-medium text-foreground">{invoice.customerName}</p>
-                <p className="text-xs text-muted-foreground">Customer ID: {invoice.customerId}</p>
+                <p className="text-xs text-muted-foreground">Customer ID: {invoice.customerCustomId ?? invoice.customerId}</p>
               </div>
             ),
           },

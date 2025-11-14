@@ -18,6 +18,7 @@ import type { ServiceStatus } from "@/types/service";
 
 type ServiceSnapshotItem = {
   id: string;
+  customId?: string;
   customerName: string;
   productName: string;
   technicianName: string | null;
@@ -36,6 +37,7 @@ export type StaffDashboardMetrics = {
   upcomingFollowUps: ServiceSnapshotItem[];
   activeOrders: Array<{
     id: string;
+    customId?: string;
     customerName: string;
     productName: string;
     createdAt: string;
@@ -104,6 +106,7 @@ export async function fetchStaffDashboardMetrics(): Promise<StaffDashboardMetric
     ) {
       upcomingFollowUpsRaw.push({
         id: doc.id,
+        customId: (data.customId as string) ?? undefined,
         customerName: (data.customerName as string) ?? "Unknown customer",
         productName: (data.productName as string) ?? "Unknown product",
         technicianName: (data.technicianName as string) ?? null,
@@ -135,6 +138,7 @@ export async function fetchStaffDashboardMetrics(): Promise<StaffDashboardMetric
       const data = doc.data();
       return {
         id: doc.id,
+        customId: (data.customId as string) ?? undefined,
         customerName: (data.customerName as string) ?? "Unknown customer",
         productName: (data.productName as string) ?? "Unknown product",
         createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : "",

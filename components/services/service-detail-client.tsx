@@ -157,9 +157,13 @@ export function ServiceDetailClient({ serviceId }: ServiceDetailClientProps) {
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Identifiers
             </div>
-            <p className="text-sm text-foreground">Service ID: {service.id}</p>
-            <p className="text-xs text-muted-foreground">Customer ID: {service.customerId}</p>
-            <p className="text-xs text-muted-foreground">Product ID: {service.productId}</p>
+            <p className="text-sm text-foreground">Service ID: {service.customId ?? service.id}</p>
+            <p className="text-xs text-muted-foreground">
+              Customer ID: {service.customerCustomId ?? service.customerId}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Product ID: {service.productCustomId ?? service.productId}
+            </p>
             {service.technicianId ? (
               <p className="text-xs text-muted-foreground">Technician ID: {service.technicianId}</p>
             ) : null}

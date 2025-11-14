@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
+import { generateCustomId } from "@/lib/utils/custom-id";
 import type { Product, ProductInput, ProductStatus } from "@/types/product";
 
 const COLLECTION = "products";
@@ -27,6 +28,7 @@ function mapProductSnapshot(productDoc: DocumentSnapshot<DocumentData>): Product
 
   return {
     id: productDoc.id,
+    customId: (data.customId as string) ?? productDoc.id,
     name: data.name as string,
     model: data.model as string,
     description: data.description as string,
@@ -53,9 +55,11 @@ export async function fetchProduct(id: string): Promise<Product | null> {
 }
 
 export async function createProduct(payload: ProductInput) {
+  const customId = generateCustomId("PROD");
   const productRef = collection(db, COLLECTION);
   const docRef = await addDoc(productRef, {
     ...payload,
+    customId,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

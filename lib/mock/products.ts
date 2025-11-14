@@ -3,6 +3,7 @@ import type { Product, ProductStatus } from "@/types/product";
 export const mockProducts: Product[] = [
   {
     id: "PROD-001",
+    customId: "PROD-001",
     name: "AquaPure Elite",
     model: "AP-ELT-2024",
     description:
@@ -14,6 +15,7 @@ export const mockProducts: Product[] = [
   },
   {
     id: "PROD-002",
+    customId: "PROD-002",
     name: "CrystalClean Pro",
     model: "CC-PRO-18",
     description:
@@ -25,6 +27,7 @@ export const mockProducts: Product[] = [
   },
   {
     id: "PROD-003",
+    customId: "PROD-003",
     name: "PureWave Ultra",
     model: "PW-UL-22",
     description:
@@ -36,6 +39,7 @@ export const mockProducts: Product[] = [
   },
   {
     id: "PROD-004",
+    customId: "PROD-004",
     name: "HydroGuard Max",
     model: "HG-MX-16",
     description:
@@ -47,6 +51,7 @@ export const mockProducts: Product[] = [
   },
   {
     id: "PROD-005",
+    customId: "PROD-005",
     name: "EcoFlow Lite",
     model: "EF-LT-12",
     description:
