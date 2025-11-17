@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
-import { Eye, RefreshCcw, Search, Share2 } from "lucide-react";
+import { Copy, Eye, RefreshCcw, Search } from "lucide-react";
 
 import { SimpleTable } from "@/components/data/simple-table";
 import { Badge } from "@/components/ui/badge";
@@ -309,7 +309,7 @@ export function InvoiceTable() {
                   onClick={() => void handleResendClick(invoice)}
                   title="Copy invoice link"
                 >
-                  <Share2 className="mr-2 h-4 w-4" />
+                  <Copy className="mr-2 h-4 w-4" />
                   Copy Link
                 </Button>
               </div>
