@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, History, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -9,28 +9,17 @@ import { CustomerSelectorWithOrders } from "@/components/services/customer-selec
 import { ServiceHistoryDialog } from "@/components/services/service-history-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Combobox } from "@/components/ui/combobox";
 import { useAuth } from "@/hooks/use-auth";
 import { useCustomers } from "@/hooks/use-customers";
-import { useProducts } from "@/hooks/use-products";
 import { useServices } from "@/hooks/use-services";
 import { useTechnicians } from "@/hooks/use-technicians";
-import { fetchOrdersByCustomerId } from "@/lib/firestore/orders";
 import type { CreateServiceInput } from "@/types/service";
 import type { Order } from "@/types/order";
 
-type ManualServiceFormProps = {
+type QuarterlyServiceFormProps = {
   basePath: string;
-  initialOrderId?: string;
-  initialCustomerId?: string;
 };
 
 type ServiceFormErrors = {
@@ -39,28 +28,22 @@ type ServiceFormErrors = {
   scheduledDate: string;
 };
 
-export function ManualServiceForm({ basePath, initialOrderId, initialCustomerId }: ManualServiceFormProps) {
+export function QuarterlyServiceForm({ basePath }: QuarterlyServiceFormProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  // Get initial values from query params if provided
-  const orderIdFromQuery = initialOrderId ?? searchParams?.get("orderId") ?? "";
-  const customerIdFromQuery = initialCustomerId ?? searchParams?.get("customerId") ?? "";
 
   const { user } = useAuth();
   const { customers, loading: customersLoading } = useCustomers();
-  const { products, loading: productsLoading } = useProducts();
   const { technicians, loading: techniciansLoading } = useTechnicians();
   const { saving, handleCreate } = useServices();
 
   const [formValues, setFormValues] = useState<CreateServiceInput>({
-    customerId: customerIdFromQuery,
+    customerId: "",
     customerName: "",
     productId: "",
     productName: "",
     orderId: null,
     orderCustomId: null,
-    serviceType: "MANUAL",
+    serviceType: "QUARTERLY",
     scheduledDate: "",
     notes: "",
     technicianId: null,
@@ -71,8 +54,6 @@ export function ManualServiceForm({ basePath, initialOrderId, initialCustomerId 
     productId: "",
     scheduledDate: "",
   });
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [loadingOrder, setLoadingOrder] = useState(false);
   const [serviceHistoryOpen, setServiceHistoryOpen] = useState(false);
   const [serviceHistoryData, setServiceHistoryData] = useState<{
     customerId: string;
@@ -80,50 +61,6 @@ export function ManualServiceForm({ basePath, initialOrderId, initialCustomerId 
     productId: string;
     productName: string;
   } | null>(null);
-
-  const loadOrderData = useCallback(async (customerId: string, orderId: string) => {
-    setLoadingOrder(true);
-    try {
-      const orders = await fetchOrdersByCustomerId(customerId);
-      const order = orders.find((o) => o.id === orderId);
-      if (order) {
-        setSelectedOrder(order);
-        const customer = customers.find((c) => c.id === customerId);
-        setFormValues((prev) => ({
-          ...prev,
-          customerId: customerId,
-          customerName: customer?.name ?? "",
-          productId: order.productId,
-          productName: order.productName,
-          orderId: order.id,
-          orderCustomId: order.customId,
-          serviceType: "MANUAL",
-        }));
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to load order data.");
-    } finally {
-      setLoadingOrder(false);
-    }
-  }, [customers]);
-
-  // Load order if orderId is provided
-  useEffect(() => {
-    if (orderIdFromQuery && customerIdFromQuery) {
-      void loadOrderData(customerIdFromQuery, orderIdFromQuery);
-    } else if (customerIdFromQuery) {
-      // Set customer name if customer ID is provided
-      const customer = customers.find((c) => c.id === customerIdFromQuery);
-      if (customer) {
-        setFormValues((prev) => ({
-          ...prev,
-          customerId: customer.id,
-          customerName: customer.name,
-        }));
-      }
-    }
-  }, [orderIdFromQuery, customerIdFromQuery, customers, loadOrderData]);
 
   const handleCustomerChange = (customerId: string) => {
     const customer = customers.find((c) => c.id === customerId);
@@ -136,12 +73,10 @@ export function ManualServiceForm({ basePath, initialOrderId, initialCustomerId 
       orderId: null,
       orderCustomId: null,
     }));
-    setSelectedOrder(null);
   };
 
   const handleOrderSelect = (order: Order, checked: boolean) => {
     if (checked) {
-      setSelectedOrder(order);
       setFormValues((prev) => ({
         ...prev,
         customerId: order.customerId,
@@ -150,10 +85,9 @@ export function ManualServiceForm({ basePath, initialOrderId, initialCustomerId 
         productName: order.productName,
         orderId: order.id,
         orderCustomId: order.customId,
-        serviceType: "MANUAL",
+        serviceType: "QUARTERLY",
       }));
     } else {
-      setSelectedOrder(null);
       setFormValues((prev) => ({
         ...prev,
         productId: "",
@@ -192,9 +126,8 @@ export function ManualServiceForm({ basePath, initialOrderId, initialCustomerId 
     if (!validateForm()) return;
 
     const selectedCustomer = customers.find((customer) => customer.id === formValues.customerId);
-    const selectedProduct = products.find((product) => product.id === formValues.productId);
 
-    if (!selectedCustomer || !selectedProduct) {
+    if (!selectedCustomer || !formValues.productId) {
       toast.error("Unable to find selected customer or product.");
       return;
     }
@@ -207,11 +140,11 @@ export function ManualServiceForm({ basePath, initialOrderId, initialCustomerId 
       await handleCreate({
         customerId: selectedCustomer.id,
         customerName: selectedCustomer.name,
-        productId: selectedProduct.id,
-        productName: selectedProduct.name,
+        productId: formValues.productId,
+        productName: formValues.productName,
         orderId: formValues.orderId ?? null,
         orderCustomId: formValues.orderCustomId ?? null,
-        serviceType: "MANUAL",
+        serviceType: "QUARTERLY",
         scheduledDate: formValues.scheduledDate,
         notes: formValues.notes,
         technicianId: selectedTechnician?.id ?? null,
@@ -219,7 +152,7 @@ export function ManualServiceForm({ basePath, initialOrderId, initialCustomerId 
         createdBy: user?.uid ?? null,
         assignedBy: selectedTechnician?.id ? (user?.uid ?? null) : null,
       });
-      toast.success("Manual service scheduled successfully.");
+      toast.success("Quarterly service scheduled successfully.");
       router.push(`${basePath}/services`);
     } catch (err) {
       console.error(err);
@@ -227,7 +160,7 @@ export function ManualServiceForm({ basePath, initialOrderId, initialCustomerId 
     }
   };
 
-  const isFormDisabled = customersLoading || productsLoading || techniciansLoading || loadingOrder || saving;
+  const isFormDisabled = customersLoading || techniciansLoading || saving;
 
   return (
     <div className="space-y-6">
@@ -236,9 +169,9 @@ export function ManualServiceForm({ basePath, initialOrderId, initialCustomerId 
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h2 className="text-xl font-semibold text-primary">Create Manual Service</h2>
+          <h2 className="text-xl font-semibold text-primary">Create Quarterly Service</h2>
           <p className="text-sm text-muted-foreground">
-            Select a customer and order to schedule a manual service visit.
+            Select a customer and order to schedule a quarterly service visit.
           </p>
         </div>
       </div>

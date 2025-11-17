@@ -47,6 +47,8 @@ export function StaffTable() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"ALL" | StaffRole>("ALL");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
@@ -155,7 +157,8 @@ export function StaffTable() {
       resetForm();
     } catch (err) {
       console.error(err);
-      toast.error("Unable to save team member. Please try again.");
+      const errorMessage = err instanceof Error ? err.message : "Unable to save team member. Please try again.";
+      toast.error(errorMessage);
     }
   };
 
@@ -201,7 +204,10 @@ export function StaffTable() {
           />
         </div>
         <div className="flex items-center gap-2">
-          <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as typeof roleFilter)}>
+          <Select value={roleFilter} onValueChange={(value) => {
+            setRoleFilter(value as typeof roleFilter);
+            setCurrentPage(1);
+          }}>
             <SelectTrigger className="h-11 rounded-full border-transparent bg-gradient-soft px-5 text-sm shadow-inner shadow-black/5">
               <SelectValue placeholder="Role" />
             </SelectTrigger>
@@ -213,7 +219,10 @@ export function StaffTable() {
           </Select>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}>
+          <Select value={statusFilter} onValueChange={(value) => {
+            setStatusFilter(value as typeof statusFilter);
+            setCurrentPage(1);
+          }}>
             <SelectTrigger className="h-11 rounded-full border-transparent bg-gradient-soft px-5 text-sm shadow-inner shadow-black/5">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -342,6 +351,12 @@ export function StaffTable() {
         emptyMessage={
           loading ? "Loading staff..." : "No team members found. Add one to get started."
         }
+        pagination={{
+          currentPage,
+          pageSize,
+          totalItems: filteredStaff.length,
+          onPageChange: setCurrentPage,
+        }}
       />
 
       <div className="flex flex-col justify-between gap-3 rounded-[2rem] border border-border/40 bg-white/90 px-6 py-4 text-sm text-muted-foreground shadow-soft md:flex-row md:items-center">

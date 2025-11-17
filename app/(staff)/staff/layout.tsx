@@ -8,13 +8,12 @@ import {
   LayoutDashboard,
   PackagePlus,
   UsersRound,
+  Wrench,
 } from "lucide-react";
 
 import { RoleGuard } from "@/components/auth/role-guard";
 import { AppShell } from "@/components/layout/app-shell";
 import { Sidebar } from "@/components/layout/sidebar";
-import { Topbar } from "@/components/layout/topbar";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 
 type StaffLayoutProps = {
@@ -24,9 +23,10 @@ type StaffLayoutProps = {
 const staffNavItems = [
   { title: "Dashboard", href: "/staff/dashboard", icon: LayoutDashboard },
   { title: "Services", href: "/staff/services", icon: ClipboardList },
-  { title: "Products", href: "/staff/products", icon: Droplets },
   { title: "Orders", href: "/staff/orders", icon: PackagePlus },
+  { title: "Products", href: "/staff/products", icon: Droplets },
   { title: "Customers", href: "/staff/customers", icon: UsersRound },
+  { title: "Technicians", href: "/staff/technicians", icon: Wrench },
   { title: "Invoices", href: "/staff/invoices", icon: FileText },
 ];
 
@@ -38,8 +38,8 @@ export default function StaffLayout({ children }: StaffLayoutProps) {
       <AppShell
         sidebar={
           <Sidebar
-            title="Staff Workspace"
-            subtitle="Daily Operations"
+            title="Staff"
+            subtitle=""
             items={staffNavItems}
             userName={profile?.name ?? user?.email ?? "Staff Member"}
             userEmail={user?.email ?? ""}
@@ -47,17 +47,6 @@ export default function StaffLayout({ children }: StaffLayoutProps) {
             onLogout={() => {
               void signOut();
             }}
-          />
-        }
-        topbar={
-          <Topbar
-            title="Staff Dashboard"
-            description="Oversee orders, services, and customer follow-ups."
-            // actions={
-            //   <Button variant="subtle" className="hidden md:inline-flex">
-            //     New Order
-            //   </Button>
-            // }
           />
         }
       >

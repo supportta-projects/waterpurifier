@@ -3,16 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  BadgeCheck,
-  ClipboardList,
   Clock,
   Loader2,
   MapPinned,
   RefreshCcw,
 } from "lucide-react";
-import { toast } from "sonner";
 
 import { useTechnicianDashboard } from "@/hooks/use-technician-dashboard";
+import { useAuth } from "@/hooks/use-auth";
 import { StatCard } from "@/components/dashboard/stat-card";
 import {
   Card,
@@ -24,6 +22,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { TechnicianDashboardMetrics } from "@/lib/firestore/technician-dashboard";
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
 
 function formatDate(value?: string) {
   if (!value) return "—";
@@ -68,25 +73,25 @@ type TechnicianDashboardClientProps = {
 
 export function TechnicianDashboardClient({ initialData }: TechnicianDashboardClientProps) {
   const router = useRouter();
+  const { profile, user } = useAuth();
   const { data, loading, error, refresh } = useTechnicianDashboard(initialData);
   const showSkeleton = loading && !data;
   const isRefreshing = loading && Boolean(data);
+  
+  const userName = profile?.name ?? user?.email?.split("@")[0] ?? "Technician";
+  const greeting = getGreeting();
 
   if (showSkeleton) {
     return (
-      <div className="space-y-8">
-        <section className="rounded-[2rem] bg-white/90 px-8 py-9 shadow-soft ring-1 ring-primary/10">
-          <div className="space-y-4">
-            <div className="h-3 w-24 rounded-full bg-primary/30 animate-pulse" />
-            <div className="h-10 w-64 rounded-full bg-primary/20 animate-pulse" />
-            <div className="h-14 w-full max-w-2xl rounded-3xl bg-primary/10 animate-pulse" />
-          </div>
+      <div className="space-y-6">
+        <section className="rounded-2xl border border-border/40 bg-white px-6 py-6 shadow-sm">
+          <div className="h-8 w-32 rounded bg-muted/40 animate-pulse" />
         </section>
-        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-3xl border border-border/40 bg-white/90 p-6 shadow-soft">
-              <div className="h-3 w-24 rounded-full bg-muted/40 animate-pulse" />
-              <div className="mt-4 h-10 w-32 rounded-full bg-muted/30 animate-pulse" />
+            <div key={i} className="rounded-2xl border border-border/40 bg-white p-6 shadow-sm">
+              <div className="h-3 w-24 rounded bg-muted/40 animate-pulse" />
+              <div className="mt-4 h-8 w-20 rounded bg-muted/30 animate-pulse" />
             </div>
           ))}
         </section>
@@ -95,53 +100,42 @@ export function TechnicianDashboardClient({ initialData }: TechnicianDashboardCl
   }
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-[2rem] bg-white/90 px-8 py-9 shadow-soft ring-1 ring-primary/10">
+    <div className="space-y-6">
+      <section className="rounded-2xl border border-border/40 bg-white px-6 py-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-widest text-primary/70">Today's Plan</p>
-            <h1 className="text-3xl font-semibold text-primary">
-              Stay on top of assigned services & capture completion notes
+            <h1 className="text-2xl font-semibold text-primary">
+              {greeting}, {userName.split(" ")[0]}!
             </h1>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Accept new work, update status as you progress, and generate invoices once the job is
-              done.
+            <p className="mt-1 text-sm text-muted-foreground">
+              Here's your schedule and work overview for today
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => router.push("/technician/services/available")}
             >
-              View Available Work
-            </Button>
-            <Button
-              variant="secondary"
-              className="rounded-full"
-              onClick={() => router.push("/technician/invoices")}
-            >
-              Generate Invoice
+              Available Services
             </Button>
             <Button
               variant="ghost"
-              className="rounded-full"
+              size="sm"
               onClick={async () => {
-                toast.info("Refreshing dashboard...");
                 await refresh();
               }}
               disabled={loading}
             >
-              <RefreshCcw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              Refresh
+              <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </Button>
           </div>
         </div>
       </section>
 
       {isRefreshing ? (
-        <div className="flex items-center gap-2 rounded-[2rem] border border-border/40 bg-white/90 px-5 py-3 text-sm text-muted-foreground shadow-soft">
+        <div className="flex items-center gap-2 rounded-xl border border-border/40 bg-white px-4 py-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          Refreshing dashboard metrics...
+          Refreshing...
         </div>
       ) : null}
 
@@ -153,154 +147,113 @@ export function TechnicianDashboardClient({ initialData }: TechnicianDashboardCl
 
       {data ? (
         <>
-          <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
               title="Assigned Today"
               value={formatNumber(data.totals.assignedToday)}
-              subtitle="Includes manual + quarterly visits"
+              subtitle="Services"
             />
             <StatCard
               title="Completed This Week"
               value={formatNumber(data.totals.completedThisWeek)}
-              subtitle="Keep streak above 12/week"
+              subtitle="Services"
             />
-            <StatCard title="Avg. Feedback" value="4.7 ★" subtitle="Based on last 20 visits" />
             <StatCard
-              title="Invoices Pending"
-              value={formatNumber(data.totals.invoicesPending)}
-              subtitle="Share links after completion"
+              title="In Progress"
+              value={formatNumber(data.serviceStatusCounts.inProgress)}
+              subtitle="Active"
+            />
+            <StatCard
+              title="Available"
+              value={formatNumber(data.serviceStatusCounts.available)}
+              subtitle="To accept"
             />
           </section>
 
-          <section className="grid gap-5 xl:grid-cols-[2.4fr_1.6fr]">
-            <Card className="rounded-[2rem] bg-white/90 shadow-soft">
+          <section className="grid gap-4 lg:grid-cols-2">
+            <Card className="rounded-2xl border border-border/40 bg-white shadow-sm">
               <CardHeader>
-                <CardTitle className="text-xl">Today's Schedule</CardTitle>
-                <CardDescription>
-                  Accept new jobs or update status as you progress through the day.
-                </CardDescription>
+                <CardTitle className="text-lg">Today's Schedule</CardTitle>
+                <CardDescription>Services scheduled for today</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3">
                 {data.todaySchedule.length === 0 ? (
-                  <div className="py-8 text-center text-sm text-muted-foreground">
-                    No services scheduled for today.
+                  <div className="py-6 text-center text-sm text-muted-foreground">
+                    No services scheduled for today
                   </div>
                 ) : (
                   data.todaySchedule.map((slot) => (
                     <div
                       key={slot.id}
-                      className="flex flex-col gap-3 rounded-2xl border border-border/40 bg-gradient-soft px-5 py-4 shadow-inner shadow-primary/5 md:flex-row md:items-center md:justify-between"
+                      className="flex flex-col gap-2 rounded-xl border border-border/40 bg-white px-4 py-3"
                     >
-                      <div className="flex flex-col gap-1">
-                        <span className="text-sm font-semibold text-primary">{slot.customId ?? slot.id.slice(0, 8)}</span>
-                        <span className="text-sm text-foreground">{slot.customerName}</span>
-                        <span className="text-xs text-muted-foreground">{slot.productName}</span>
-                        {slot.address ? (
-                          <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <MapPinned className="h-3.5 w-3.5 text-primary/70" />
-                            {slot.address}
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="flex flex-col items-start gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center">
-                        <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 shadow-inner shadow-black/5">
-                          <Clock className="h-4 w-4 text-primary" />
-                          {formatTime(slot.scheduledDate)}
-                        </span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-foreground">{slot.customerName}</span>
                         <Badge variant={serviceStatusLabels[slot.status]?.variant ?? "outline"}>
                           {serviceStatusLabels[slot.status]?.label ?? slot.status}
                         </Badge>
                       </div>
+                      <p className="text-xs text-muted-foreground">{slot.productName}</p>
+                      {slot.address && (
+                        <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <MapPinned className="h-3 w-3" />
+                          {slot.address}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        {formatTime(slot.scheduledDate)}
+                      </div>
                     </div>
                   ))
                 )}
               </CardContent>
             </Card>
 
-            <Card className="rounded-[2rem] bg-white/90 shadow-soft">
+            <Card className="rounded-2xl border border-border/40 bg-white shadow-sm">
               <CardHeader>
-                <CardTitle className="text-xl">Recent Completions</CardTitle>
-                <CardDescription>Finish invoice handoff to get credit for the job.</CardDescription>
+                <CardTitle className="text-lg">Quick Actions</CardTitle>
+                <CardDescription>Navigate to your work</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {data.recentCompletions.length === 0 ? (
-                  <div className="py-8 text-center text-sm text-muted-foreground">
-                    No recent completions.
+              <CardContent className="space-y-4">
+                <div className="grid gap-2">
+                  <Button variant="outline" asChild className="justify-start">
+                    <Link href="/technician/services/available">Available Services</Link>
+                  </Button>
+                  <Button variant="outline" asChild className="justify-start">
+                    <Link href="/technician/services/assigned">Assigned Work</Link>
+                  </Button>
+                  <Button variant="outline" asChild className="justify-start">
+                    <Link href="/technician/services/completed">Completed</Link>
+                  </Button>
+                  <Button variant="outline" asChild className="justify-start">
+                    <Link href="/technician/invoices">Invoices</Link>
+                  </Button>
+                </div>
+                {data.serviceStatusCounts.available > 0 && (
+                  <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm">
+                    <p className="font-medium text-green-900">✨ New Opportunities</p>
+                    <p className="mt-1 text-green-700">
+                      {data.serviceStatusCounts.available} service{data.serviceStatusCounts.available !== 1 ? "s" : ""} available for you to accept.
+                    </p>
                   </div>
-                ) : (
-                  data.recentCompletions.map((completion) => (
-                    <div
-                      key={completion.id}
-                      className="rounded-2xl border border-border/40 bg-white px-4 py-4 text-sm shadow-inner shadow-black/5"
-                    >
-                      <div className="flex items-center justify-between text-foreground">
-                        <span className="font-medium text-primary">{completion.customerName}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDateTime(completion.createdAt)}
-                        </span>
-                      </div>
-                      <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                        <span>Service #{completion.customId ?? completion.id.slice(0, 8)}</span>
-                        <span className="font-semibold text-primary/80">Completed</span>
-                      </div>
-                    </div>
-                  ))
                 )}
-              </CardContent>
-            </Card>
-          </section>
-
-          <section className="grid gap-5 md:grid-cols-2">
-            <Card className="rounded-[2rem] bg-white/90 shadow-soft">
-              <CardHeader>
-                <CardTitle className="text-lg">Service Status Checklist</CardTitle>
-                <CardDescription>Keep your work items moving towards completion.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <div className="flex items-center justify-between rounded-2xl bg-gradient-soft px-4 py-3">
-                  <span className="flex items-center gap-2 text-foreground">
-                    <ClipboardList className="h-4 w-4 text-primary" />
-                    Available Services
-                  </span>
-                  <span className="text-primary font-semibold">
-                    {formatNumber(data.serviceStatusCounts.available)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between rounded-2xl bg-white/90 px-4 py-3 shadow-inner shadow-black/5">
-                  <span className="flex items-center gap-2 text-foreground">
-                    <Clock className="h-4 w-4 text-primary" />
-                    In Progress
-                  </span>
-                  <span>{formatNumber(data.serviceStatusCounts.inProgress)}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-2xl bg-white/90 px-4 py-3 shadow-inner shadow-black/5">
-                  <span className="flex items-center gap-2 text-foreground">
-                    <BadgeCheck className="h-4 w-4 text-primary" />
-                    Completed & Awaiting Invoice
-                  </span>
-                  <span>{formatNumber(data.serviceStatusCounts.completedAwaitingInvoice)}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-[2rem] bg-white/90 shadow-soft">
-              <CardHeader>
-                <CardTitle className="text-lg">Quick Access</CardTitle>
-                <CardDescription>Jump to the pages you need while on the move.</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-3 text-primary">
-                <Button variant="outline" asChild className="justify-start rounded-2xl">
-                  <Link href="/technician/services/available">Available Services</Link>
-                </Button>
-                <Button variant="outline" asChild className="justify-start rounded-2xl">
-                  <Link href="/technician/services/assigned">Assigned Work</Link>
-                </Button>
-                <Button variant="outline" asChild className="justify-start rounded-2xl">
-                  <Link href="/technician/services/completed">Completed Services</Link>
-                </Button>
-                <Button variant="outline" asChild className="justify-start rounded-2xl">
-                  <Link href="/technician/invoices">Generate Invoice</Link>
-                </Button>
+                {data.totals.completedThisWeek > 0 && (
+                  <div className="rounded-lg border border-purple-200 bg-purple-50 p-3 text-sm">
+                    <p className="font-medium text-purple-900">🎉 Great Work!</p>
+                    <p className="mt-1 text-purple-700">
+                      You've completed {data.totals.completedThisWeek} service{data.totals.completedThisWeek !== 1 ? "s" : ""} this week. Keep it up!
+                    </p>
+                  </div>
+                )}
+                {data.serviceStatusCounts.inProgress > 0 && (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm">
+                    <p className="font-medium text-blue-900">⚡ In Progress</p>
+                    <p className="mt-1 text-blue-700">
+                      You have {data.serviceStatusCounts.inProgress} active service{data.serviceStatusCounts.inProgress !== 1 ? "s" : ""}. Don't forget to update status when done.
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </section>

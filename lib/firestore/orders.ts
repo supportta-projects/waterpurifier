@@ -41,6 +41,7 @@ function mapOrderSnapshot(snapshot: DocumentSnapshot<DocumentData>): Order {
     unitPrice: data.unitPrice as number,
     totalAmount: data.totalAmount as number,
     status: (data.status ?? "PENDING") as OrderStatus,
+    createdBy: data.createdBy ?? null,
     invoiceId: data.invoiceId ?? null,
     invoiceNumber: data.invoiceNumber ?? null,
     invoiceStatus: data.invoiceStatus ?? null,
@@ -96,6 +97,7 @@ export async function createOrder(payload: CreateOrderInput): Promise<Order> {
     productCustomId: product?.customId,
     totalAmount,
     status: "PENDING" satisfies OrderStatus,
+    createdBy: payload.createdBy ?? null,
     invoiceId: null,
     invoiceNumber: null,
     invoiceStatus: null,
@@ -104,6 +106,7 @@ export async function createOrder(payload: CreateOrderInput): Promise<Order> {
   });
 
   const invoice = await createInvoice({
+    invoiceType: "ORDER",
     orderId: docRef.id,
     orderCustomId: customId,
     customerId: payload.customerId,

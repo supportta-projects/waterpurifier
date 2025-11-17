@@ -48,7 +48,7 @@ type UseStaffDashboardReturn = {
   refresh: () => Promise<void>;
 };
 
-export function useStaffDashboard(initialData?: StaffDashboardMetrics): UseStaffDashboardReturn {
+export function useStaffDashboard(initialData?: StaffDashboardMetrics, staffUid?: string): UseStaffDashboardReturn {
   const cachedFromStorage = useRef<StaffDashboardMetrics | null>(initialData ?? null);
   if (!cachedFromStorage.current) {
     cachedFromStorage.current = readCachedMetrics();
@@ -62,7 +62,7 @@ export function useStaffDashboard(initialData?: StaffDashboardMetrics): UseStaff
       const silent = options?.silent ?? false;
       if (!silent) setLoading(true);
       try {
-        const metrics = await fetchStaffDashboardMetrics();
+        const metrics = await fetchStaffDashboardMetrics(staffUid);
         setData(metrics);
         writeCachedMetrics(metrics);
         setError(null);
@@ -73,7 +73,7 @@ export function useStaffDashboard(initialData?: StaffDashboardMetrics): UseStaff
         if (!silent) setLoading(false);
       }
     },
-    [],
+    [staffUid],
   );
 
   useEffect(() => {

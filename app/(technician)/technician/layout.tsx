@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import {
   BadgeCheck,
   ClipboardCheck,
@@ -15,6 +16,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { getPageTitle } from "@/lib/utils/page-titles";
 
 type TechnicianLayoutProps = {
   children: ReactNode;
@@ -30,14 +32,16 @@ const technicianNavItems = [
 
 export default function TechnicianLayout({ children }: TechnicianLayoutProps) {
   const { profile, user, signOut } = useAuth();
+  const pathname = usePathname();
+  const { title, description } = getPageTitle(pathname, "TECHNICIAN");
 
   return (
     <RoleGuard allowed={["TECHNICIAN"]}>
       <AppShell
         sidebar={
           <Sidebar
-            title="Technician Hub"
-            subtitle="Daily Schedule"
+            title="Technician"
+            subtitle=""
             items={technicianNavItems}
             userName={profile?.name ?? user?.email ?? "Technician"}
             userEmail={user?.email ?? ""}
@@ -49,13 +53,8 @@ export default function TechnicianLayout({ children }: TechnicianLayoutProps) {
         }
         topbar={
           <Topbar
-            title="Technician Workspace"
-            description="Stay on top of assigned services and pending invoices."
-            actions={
-              <Button variant="subtle" className="hidden md:inline-flex">
-                View Calendar
-              </Button>
-            }
+            title={title}
+            description={description}
           />
         }
       >

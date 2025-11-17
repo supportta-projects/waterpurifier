@@ -13,6 +13,7 @@ export type Order = {
   unitPrice: number;
   totalAmount: number;
   status: OrderStatus;
+  createdBy?: string | null; // UID of staff/admin who created the order
   invoiceId?: string | null;
   invoiceNumber?: string | null;
   invoiceStatus?: string | null;
@@ -27,6 +28,7 @@ export type CreateOrderInput = {
   productName: string;
   quantity: number;
   unitPrice: number;
+  createdBy?: string | null; // UID of staff/admin who created the order
 };
 
 export type UpdateOrderInput = Partial<

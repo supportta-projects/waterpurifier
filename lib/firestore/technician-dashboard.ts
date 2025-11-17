@@ -199,14 +199,33 @@ export async function fetchTechnicianDashboardMetrics(
   const completedAwaitingInvoice = completedAwaitingInvoiceSnapshot.docs.length;
 
   // Invoices pending (related to this technician's services)
-  // Count separately to avoid index requirements
-  const pendingInvoices = await safeCount(
-    query(invoicesCol, where("status", "==", "PENDING")),
+  // Get all services completed by this technician
+  const completedServicesSnapshot = await getDocs(
+    query(
+      servicesCol,
+      where("technicianId", "==", technicianId),
+      where("status", "==", "COMPLETED"),
+      limit(500),
+    ),
   );
-  const sentInvoices = await safeCount(
-    query(invoicesCol, where("status", "==", "SENT")),
+  const technicianServiceIds = new Set(completedServicesSnapshot.docs.map(doc => doc.id));
+
+  // Get all invoices and filter by serviceId
+  const allInvoicesSnapshot = await getDocs(
+    query(invoicesCol, orderBy("createdAt", "desc"), limit(500)),
   );
-  const invoicesPending = pendingInvoices + sentInvoices;
+
+  let invoicesPending = 0;
+  allInvoicesSnapshot.docs.forEach((doc) => {
+    const data = doc.data();
+    const serviceId = data.serviceId as string | null;
+    const status = (data.status as string) ?? "PENDING";
+    
+    // Only count invoices for services completed by this technician
+    if (serviceId && technicianServiceIds.has(serviceId) && (status === "PENDING" || status === "SENT")) {
+      invoicesPending += 1;
+    }
+  });
 
   return {
     totals: {

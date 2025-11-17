@@ -32,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +43,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useAuth } from "@/hooks/use-auth";
 import { useCustomers } from "@/hooks/use-customers";
 import { useOrders } from "@/hooks/use-orders";
 import { useProducts } from "@/hooks/use-products";
@@ -66,6 +68,7 @@ export function OrderTable() {
   const router = useRouter();
   const pathname = usePathname();
   const basePath = pathname?.startsWith("/staff") ? "/staff" : "/admin";
+  const { user } = useAuth();
   const { orders, loading, saving, error, handleCreate, handleUpdateStatus, handleDelete } =
     useOrders();
   const {
@@ -81,6 +84,8 @@ export function OrderTable() {
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<OrderStatus | "ALL">("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deleteInvoiceId, setDeleteInvoiceId] = useState<string | null>(null);
@@ -175,6 +180,7 @@ export function OrderTable() {
       productName: selectedProduct.name,
       quantity: formValues.quantity,
       unitPrice: selectedProduct.price,
+      createdBy: user?.uid ?? null,
     };
 
     try {
@@ -247,7 +253,10 @@ export function OrderTable() {
           />
         </div>
         <div className="flex items-center gap-2">
-          <Select value={status} onValueChange={(value) => setStatus(value as OrderStatus | "ALL")}>
+          <Select value={status} onValueChange={(value) => {
+            setStatus(value as OrderStatus | "ALL");
+            setCurrentPage(1);
+          }}>
             <SelectTrigger className="h-11 rounded-full border-transparent bg-gradient-soft px-5 text-sm shadow-inner shadow-black/5">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
@@ -404,6 +413,12 @@ export function OrderTable() {
             ? "Loading orders..."
             : "No orders found. Create one to get started."
         }
+        pagination={{
+          currentPage,
+          pageSize,
+          totalItems: filteredOrders.length,
+          onPageChange: setCurrentPage,
+        }}
       />
 
       <div className="flex flex-col justify-between gap-3 rounded-[2rem] border border-border/40 bg-white/90 px-6 py-4 text-sm text-muted-foreground shadow-soft md:flex-row md:items-center">
@@ -431,24 +446,21 @@ export function OrderTable() {
               <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Customer
               </label>
-              <Select
+              <Combobox
+                options={customers.map((customer) => ({
+                  value: customer.id,
+                  label: `${customer.name} (${customer.email})`,
+                }))}
                 value={formValues.customerId}
                 onValueChange={(value) =>
                   setFormValues((prev) => ({ ...prev, customerId: value }))
                 }
+                placeholder="Select customer"
+                searchPlaceholder="Search customers..."
+                emptyMessage="No customers found"
                 disabled={isFormDisabled}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select customer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map((customer) => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.name} ({customer.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                allowClear
+              />
               {formErrors.customerId ? (
                 <p className="text-xs text-destructive">{formErrors.customerId}</p>
               ) : null}
@@ -458,24 +470,21 @@ export function OrderTable() {
               <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Product
               </label>
-              <Select
+              <Combobox
+                options={products.map((product) => ({
+                  value: product.id,
+                  label: `${product.name} · ₹${product.price.toLocaleString("en-IN")}`,
+                }))}
                 value={formValues.productId}
                 onValueChange={(value) =>
                   setFormValues((prev) => ({ ...prev, productId: value }))
                 }
+                placeholder="Select product"
+                searchPlaceholder="Search products..."
+                emptyMessage="No products found"
                 disabled={isFormDisabled}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select product" />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.name} · ₹{product.price.toLocaleString("en-IN")}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                allowClear
+              />
               {formErrors.productId ? (
                 <p className="text-xs text-destructive">{formErrors.productId}</p>
               ) : null}

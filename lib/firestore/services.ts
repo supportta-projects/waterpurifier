@@ -46,6 +46,8 @@ function mapServiceSnapshot(snapshot: DocumentSnapshot<DocumentData>): Service {
     orderCustomId: data.orderCustomId ?? null,
     technicianId: data.technicianId ?? null,
     technicianName: data.technicianName ?? null,
+    createdBy: data.createdBy ?? null,
+    assignedBy: data.assignedBy ?? null,
     serviceType: (data.serviceType ?? "MANUAL") as ServiceType,
     status: (data.status ?? "AVAILABLE") as ServiceStatus,
     scheduledDate: data.scheduledDate ?? "",
@@ -77,10 +79,10 @@ export async function fetchServices(options?: {
   const snapshot = await getDocs(servicesQuery);
   let services = snapshot.docs.map((docSnapshot) => mapServiceSnapshot(docSnapshot));
 
-  // Sort by scheduledDate descending in memory
+  // Sort by createdAt descending in memory (newest first)
   services = services.sort((a, b) => {
-    const dateA = a.scheduledDate ? new Date(a.scheduledDate).getTime() : 0;
-    const dateB = b.scheduledDate ? new Date(b.scheduledDate).getTime() : 0;
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
     return dateB - dateA; // Descending order (newest first)
   });
 
@@ -111,6 +113,8 @@ export async function createService(payload: CreateServiceInput) {
     status,
     technicianId: payload.technicianId ?? null,
     technicianName: payload.technicianName ?? null,
+    createdBy: payload.createdBy ?? null,
+    assignedBy: payload.assignedBy ?? (payload.technicianId ? payload.createdBy : null),
     completedDate: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -121,11 +125,45 @@ export async function createService(payload: CreateServiceInput) {
 
 export async function updateService(id: string, payload: UpdateServiceInput) {
   const docRef = doc(db, "services", id);
-  await updateDoc(docRef, {
+  const updateData: Record<string, unknown> = {
     ...payload,
     updatedAt: serverTimestamp(),
-  });
+  };
+  // If technician is being assigned and assignedBy is not provided, set it from the payload
+  if (payload.technicianId && !payload.assignedBy && payload.assignedBy !== null) {
+    // Keep existing assignedBy if technician is being updated but assignedBy is not in payload
+    const currentDoc = await getDoc(docRef);
+    if (currentDoc.exists()) {
+      const currentData = currentDoc.data();
+      if (!currentData.assignedBy && payload.assignedBy === undefined) {
+        // Don't update assignedBy if it's not in the payload
+        delete updateData.assignedBy;
+      }
+    }
+  }
+  await updateDoc(docRef, updateData);
   const snapshot = await getDoc(docRef);
   return mapServiceSnapshot(snapshot);
+}
+
+export async function fetchServicesByCustomerAndProduct(
+  customerId: string,
+  productId: string,
+): Promise<Service[]> {
+  // Query without orderBy to avoid index requirement, then sort in memory
+  const servicesQuery = query(
+    collection(db, "services"),
+    where("customerId", "==", customerId),
+    where("productId", "==", productId),
+  );
+  const snapshot = await getDocs(servicesQuery);
+  const services = snapshot.docs.map((docSnapshot) => mapServiceSnapshot(docSnapshot));
+  
+  // Sort by createdAt descending in memory
+  return services.sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return dateB - dateA; // Descending order (newest first)
+  });
 }
 

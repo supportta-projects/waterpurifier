@@ -1,19 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, Mail, MapPin, Phone, ShoppingBag } from "lucide-react";
+import { Calendar, History, Mail, MapPin, Phone, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { useCustomers } from "@/hooks/use-customers";
 import { fetchOrdersByCustomerId } from "@/lib/firestore/orders";
 import type { Customer } from "@/types/customer";
@@ -24,6 +19,7 @@ type CustomerSelectorWithOrdersProps = {
   selectedOrderId?: string | null;
   onCustomerChange: (customerId: string) => void;
   onSelectOrder: (order: Order, checked: boolean) => void;
+  onViewServiceHistory?: (customerId: string, customerName: string, productId: string, productName: string) => void;
   disabled?: boolean;
 };
 
@@ -32,6 +28,7 @@ export function CustomerSelectorWithOrders({
   selectedOrderId,
   onCustomerChange,
   onSelectOrder,
+  onViewServiceHistory,
   disabled,
 }: CustomerSelectorWithOrdersProps) {
   const { customers, loading: customersLoading } = useCustomers();
@@ -74,22 +71,19 @@ export function CustomerSelectorWithOrders({
         <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Customer
         </label>
-        <Select
+        <Combobox
+          options={customers.map((customer) => ({
+            value: customer.id,
+            label: `${customer.name} (${customer.email})`,
+          }))}
           value={selectedCustomerId}
           onValueChange={onCustomerChange}
+          placeholder="Select customer"
+          searchPlaceholder="Search customers..."
+          emptyMessage="No customers found"
           disabled={disabled || customersLoading}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select customer" />
-          </SelectTrigger>
-          <SelectContent>
-            {customers.map((customer) => (
-              <SelectItem key={customer.id} value={customer.id}>
-                {customer.name} ({customer.email})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          allowClear
+        />
       </div>
 
       {selectedCustomer ? (
@@ -141,7 +135,7 @@ export function CustomerSelectorWithOrders({
               Order History
             </CardTitle>
             <CardDescription>
-              Select an order to create a manual service for this customer
+              Select an order to create a service. Click the "History" button to view service history for each product.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -158,63 +152,86 @@ export function CustomerSelectorWithOrders({
                 {orders
                   .filter((order) => order.status !== "CANCELLED")
                   .map((order) => (
-                    <label
+                    <div
                       key={order.id}
-                      className="flex cursor-pointer items-start gap-3 rounded-xl border border-input bg-white/90 p-4 transition-colors hover:bg-secondary/50"
+                      className="flex items-start gap-3 rounded-xl border border-input bg-white/90 p-4 transition-colors hover:bg-secondary/50"
                     >
-                      <Checkbox
-                        checked={selectedOrderId === order.id}
-                        onCheckedChange={(checked) => {
-                          onSelectOrder(order, checked === true);
-                        }}
-                        disabled={disabled}
-                        className="mt-1"
-                      />
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-primary">{order.productName}</p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              Order ID: {order.customId ?? order.id.slice(0, 8)}
-                            </p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              Qty: {order.quantity} × ₹{order.unitPrice.toLocaleString("en-IN")}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-semibold text-foreground">
-                              ₹{order.totalAmount.toLocaleString("en-IN")}
-                            </p>
-                            <div className="mt-1">
-                              {(() => {
-                                const statusMeta: Record<
-                                  Order["status"],
-                                  { label: string; variant: "default" | "secondary" | "success" | "destructive" | "outline" }
-                                > = {
-                                  PENDING: { label: "Pending", variant: "outline" },
-                                  FULFILLED: { label: "Fulfilled", variant: "success" },
-                                  CANCELLED: { label: "Cancelled", variant: "destructive" },
-                                };
-                                const meta = statusMeta[order.status];
-                                return (
-                                  <Badge variant={meta.variant} className="uppercase">
-                                    {meta.label}
-                                  </Badge>
-                                );
-                              })()}
+                      <label className="flex cursor-pointer items-start gap-3 flex-1">
+                        <Checkbox
+                          checked={selectedOrderId === order.id}
+                          onCheckedChange={(checked) => {
+                            onSelectOrder(order, checked === true);
+                          }}
+                          disabled={disabled}
+                          className="mt-1"
+                        />
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-primary">{order.productName}</p>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                Order ID: {order.customId ?? order.id.slice(0, 8)}
+                              </p>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                Qty: {order.quantity} × ₹{order.unitPrice.toLocaleString("en-IN")}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-foreground">
+                                ₹{order.totalAmount.toLocaleString("en-IN")}
+                              </p>
+                              <div className="mt-1">
+                                {(() => {
+                                  const statusMeta: Record<
+                                    Order["status"],
+                                    { label: string; variant: "default" | "secondary" | "success" | "destructive" | "outline" }
+                                  > = {
+                                    PENDING: { label: "Pending", variant: "outline" },
+                                    FULFILLED: { label: "Fulfilled", variant: "success" },
+                                    CANCELLED: { label: "Cancelled", variant: "destructive" },
+                                  };
+                                  const meta = statusMeta[order.status];
+                                  return (
+                                    <Badge variant={meta.variant} className="uppercase">
+                                      {meta.label}
+                                    </Badge>
+                                  );
+                                })()}
+                              </div>
                             </div>
                           </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Calendar className="h-3.5 w-3.5 text-primary/70" />
+                            {new Date(order.createdAt).toLocaleDateString("en-IN", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Calendar className="h-3.5 w-3.5 text-primary/70" />
-                          {new Date(order.createdAt).toLocaleDateString("en-IN", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </div>
-                      </div>
-                    </label>
+                      </label>
+                      {selectedCustomer && onViewServiceHistory && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-9 rounded-full border-primary/20 hover:bg-primary/5 hover:border-primary/40"
+                          onClick={() => {
+                            onViewServiceHistory(
+                              selectedCustomer.id,
+                              selectedCustomer.name,
+                              order.productId,
+                              order.productName,
+                            );
+                          }}
+                          disabled={disabled}
+                          title="View service history for this product"
+                        >
+                          <History className="mr-2 h-4 w-4" />
+                          <span className="text-xs">History</span>
+                        </Button>
+                      )}
+                    </div>
                   ))}
                 {orders.filter((order) => order.status !== "CANCELLED").length === 0 ? (
                   <div className="py-8 text-center text-sm text-muted-foreground">

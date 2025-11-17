@@ -37,10 +37,12 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Combobox } from "@/components/ui/combobox";
 import { useCustomers } from "@/hooks/use-customers";
 import { useProducts } from "@/hooks/use-products";
 import { useServices } from "@/hooks/use-services";
 import { useTechnicians } from "@/hooks/use-technicians";
+import { useAuth } from "@/hooks/use-auth";
 import type { CreateServiceInput, Service, ServiceStatus, UpdateServiceInput } from "@/types/service";
 
 type ServiceTableProps = {
@@ -55,16 +57,12 @@ const statusMeta: Record<ServiceStatus, { label: string; variant: "default" | "s
   COMPLETED: { label: "Completed", variant: "success" },
 };
 
-type ServiceFormErrors = {
-  customerId: string;
-  productId: string;
-  scheduledDate: string;
-};
 
 export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) {
   const router = useRouter();
   const pathname = usePathname();
   const basePath = pathname?.startsWith("/staff") ? "/staff" : "/admin";
+  const { role, user } = useAuth();
 
   const {
     services,
@@ -77,6 +75,10 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
   const { customers, loading: customersLoading } = useCustomers();
   const { products, loading: productsLoading } = useProducts();
   const { technicians, loading: techniciansLoading } = useTechnicians();
+  
+  // Only Admin and Staff can assign/manage services, not perform them
+  const canAssignTechnician = role === "ADMIN" || role === "STAFF";
+  const canPerformService = role === "TECHNICIAN";
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>("ALL");
@@ -85,6 +87,8 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
   const [dateFilter, setDateFilter] = useState<string>(initialDateFilter ?? "ALL");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
   const [assignDialog, setAssignDialog] = useState<{
     open: boolean;
     service: Service | null;
@@ -96,23 +100,6 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
   const [navigatingToManualService, setNavigatingToManualService] = useState(false);
   const [openingQuarterlyDialog, setOpeningQuarterlyDialog] = useState(false);
 
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [formValues, setFormValues] = useState<CreateServiceInput>({
-    customerId: "",
-    customerName: "",
-    productId: "",
-    productName: "",
-    serviceType: "QUARTERLY",
-    scheduledDate: "",
-    notes: "",
-    technicianId: null,
-    technicianName: null,
-  });
-  const [formErrors, setFormErrors] = useState<ServiceFormErrors>({
-    customerId: "",
-    productId: "",
-    scheduledDate: "",
-  });
 
   const filteredServices = useMemo(() => {
     let result = services;
@@ -191,94 +178,6 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
     setDateTo("");
   };
 
-  const resetForm = () => {
-    setFormValues({
-      customerId: "",
-      customerName: "",
-      productId: "",
-      productName: "",
-      serviceType: "QUARTERLY",
-      scheduledDate: "",
-      notes: "",
-      technicianId: null,
-      technicianName: null,
-    });
-    setFormErrors({
-      customerId: "",
-      productId: "",
-      scheduledDate: "",
-    });
-  };
-
-  const openCreateDialog = () => {
-    resetForm();
-    setFormValues((prev) => ({
-      ...prev,
-      serviceType: "QUARTERLY",
-    }));
-    setCreateDialogOpen(true);
-  };
-
-
-  const validateForm = () => {
-    const nextErrors: ServiceFormErrors = {
-      customerId: "",
-      productId: "",
-      scheduledDate: "",
-    };
-    let isValid = true;
-    if (!formValues.customerId) {
-      nextErrors.customerId = "Select a customer.";
-      isValid = false;
-    }
-    if (!formValues.productId) {
-      nextErrors.productId = "Select a product.";
-      isValid = false;
-    }
-    if (!formValues.scheduledDate) {
-      nextErrors.scheduledDate = "Choose a date.";
-      isValid = false;
-    }
-    setFormErrors(nextErrors);
-    return isValid;
-  };
-
-  const handleCreateSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!validateForm()) return;
-
-    const selectedCustomer = customers.find((customer) => customer.id === formValues.customerId);
-    const selectedProduct = products.find((product) => product.id === formValues.productId);
-
-    if (!selectedCustomer || !selectedProduct) {
-      toast.error("Unable to find selected customer or product.");
-      return;
-    }
-
-    try {
-      const selectedTechnician = formValues.technicianId
-        ? technicians.find((tech) => tech.id === formValues.technicianId)
-        : null;
-
-      await handleCreate({
-        customerId: selectedCustomer.id,
-        customerName: selectedCustomer.name,
-        productId: selectedProduct.id,
-        productName: selectedProduct.name,
-        serviceType: formValues.serviceType,
-        scheduledDate: formValues.scheduledDate,
-        notes: formValues.notes,
-        technicianId: selectedTechnician?.id ?? null,
-        technicianName: selectedTechnician?.name ?? null,
-      });
-      toast.success("Service scheduled.");
-      setCreateDialogOpen(false);
-      resetForm();
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to schedule service. Please try again.");
-    }
-  };
 
   const handleStatusChange = async (service: Service, nextStatus: ServiceStatus) => {
     try {
@@ -301,9 +200,6 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
       toast.error("Failed to update service status.");
     }
   };
-
-  const isCreateDisabled =
-    customersLoading || productsLoading || techniciansLoading || customers.length === 0 || products.length === 0;
 
   return (
     <div className="space-y-6">
@@ -347,29 +243,28 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
                 </>
               )}
             </Button>
-            <Button 
-              variant="outline" 
-              className="rounded-full" 
-              onClick={() => {
-                setOpeningQuarterlyDialog(true);
-                openCreateDialog();
-                // Reset after a brief moment since dialog opening is instant
-                setTimeout(() => setOpeningQuarterlyDialog(false), 100);
-              }}
-              disabled={openingQuarterlyDialog}
-            >
-              {openingQuarterlyDialog ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Loading...
-                </>
-              ) : (
-                <>
-                  <CalendarClock className="mr-2 h-4 w-4" />
-                  Quarterly Service
-                </>
-              )}
-            </Button>
+              <Button
+                variant="outline" 
+                className="rounded-full" 
+                onClick={() => {
+                  setOpeningQuarterlyDialog(true);
+                  router.push(`${basePath}/services/create-quarterly`);
+                  setTimeout(() => setOpeningQuarterlyDialog(false), 100);
+                }}
+                disabled={openingQuarterlyDialog}
+              >
+                {openingQuarterlyDialog ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <CalendarClock className="mr-2 h-4 w-4" />
+                    Quarterly Service
+                  </>
+                )}
+              </Button>
           </div>
         ) : null}
       </div>
@@ -383,7 +278,10 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
           serviceType={serviceType}
           onServiceTypeChange={setServiceType}
           technicianId={technicianId}
-          onTechnicianChange={setTechnicianId}
+          onTechnicianChange={(value) => {
+            setTechnicianId(value);
+            setCurrentPage(1);
+          }}
           technicians={technicians}
           dateFilter={dateFilter}
           onDateFilterChange={setDateFilter}
@@ -508,24 +406,26 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
                   <Eye className="h-4 w-4" />
                   <span className="sr-only">View service</span>
                 </Button>
-                {service.status === "AVAILABLE" ? (
+                {/* Only Admin/Staff can assign technicians */}
+                {canAssignTechnician && service.status === "AVAILABLE" ? (
                   <Button
                     size="icon"
                     className="h-8 w-8 rounded-full"
-                  onClick={() => {
-                    setAssignTechnicianId(service.technicianId ?? "");
-                    setAssignDialog({
-                      open: true,
-                      service,
-                    });
-                  }}
+                    onClick={() => {
+                      setAssignTechnicianId(service.technicianId ?? "");
+                      setAssignDialog({
+                        open: true,
+                        service,
+                      });
+                    }}
                     title="Assign technician"
                   >
                     <Users className="h-4 w-4" />
                     <span className="sr-only">Assign technician</span>
                   </Button>
                 ) : null}
-                {service.status === "ASSIGNED" ? (
+                {/* Only Technicians can perform services (start/complete) */}
+                {canPerformService && service.status === "ASSIGNED" ? (
                   <Button
                     size="icon"
                     className="h-8 w-8 rounded-full"
@@ -536,7 +436,7 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
                     <span className="sr-only">Start service</span>
                   </Button>
                 ) : null}
-                {service.status === "IN_PROGRESS" ? (
+                {canPerformService && service.status === "IN_PROGRESS" ? (
                   <Button
                     size="icon"
                     className="h-8 w-8 rounded-full"
@@ -547,7 +447,8 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
                     <span className="sr-only">Mark completed</span>
                   </Button>
                 ) : null}
-                {service.status !== "AVAILABLE" ? (
+                {/* Only Admin/Staff can reset service status */}
+                {canAssignTechnician && service.status !== "AVAILABLE" ? (
                   <Button
                     variant="ghost"
                     size="icon"
@@ -570,6 +471,16 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
               ? "No recent services scheduled."
               : "No services found. Schedule one to get started."
         }
+        pagination={
+          variant === "all"
+            ? {
+                currentPage,
+                pageSize,
+                totalItems: filteredServices.length,
+                onPageChange: setCurrentPage,
+              }
+            : undefined
+        }
       />
 
       {variant === "all" ? (
@@ -584,188 +495,6 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
           </p>
         </div>
       ) : null}
-
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Schedule Quarterly Service</DialogTitle>
-            <DialogDescription>
-              Choose a customer and product to create a quarterly service visit. Technicians can be assigned after scheduling.
-            </DialogDescription>
-          </DialogHeader>
-          <form className="space-y-4" onSubmit={handleCreateSubmit}>
-            <div className="grid gap-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Customer
-              </label>
-              <Select
-                value={formValues.customerId}
-                onValueChange={(value) => {
-                  const customer = customers.find((c) => c.id === value);
-                  setFormValues((prev) => ({
-                    ...prev,
-                    customerId: value,
-                    customerName: customer?.name ?? "",
-                  }));
-                }}
-                disabled={isCreateDisabled}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select customer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map((customer) => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.name} ({customer.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {formErrors.customerId ? (
-                <p className="text-xs text-destructive">{formErrors.customerId}</p>
-              ) : null}
-            </div>
-
-            <div className="grid gap-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Select Product
-              </label>
-              <div className="max-h-[200px] space-y-3 overflow-y-auto rounded-xl border border-input bg-white/90 p-4">
-                {products.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No products available.</p>
-                ) : (
-                  products.map((product) => (
-                    <label
-                      key={product.id}
-                      className="flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-secondary/50 transition-colors"
-                    >
-                      <Checkbox
-                        checked={formValues.productId === product.id}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setFormValues((prev) => ({
-                              ...prev,
-                              productId: product.id,
-                              productName: product.name,
-                            }));
-                          } else {
-                            setFormValues((prev) => ({
-                              ...prev,
-                              productId: "",
-                              productName: "",
-                            }));
-                          }
-                        }}
-                        disabled={isCreateDisabled}
-                      />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-foreground">{product.name}</p>
-                        {product.model ? (
-                          <p className="text-xs text-muted-foreground">Model: {product.model}</p>
-                        ) : null}
-                      </div>
-                    </label>
-                  ))
-                )}
-              </div>
-              {formErrors.productId ? (
-                <p className="text-xs text-destructive">{formErrors.productId}</p>
-              ) : null}
-            </div>
-
-            <div className="grid gap-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Scheduled Date
-              </label>
-              <Input
-                type="date"
-                value={formValues.scheduledDate}
-                onChange={(event) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    scheduledDate: event.target.value,
-                  }))
-                }
-              />
-              {formErrors.scheduledDate ? (
-                <p className="text-xs text-destructive">{formErrors.scheduledDate}</p>
-              ) : null}
-            </div>
-
-            <div className="grid gap-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Assign Technician (Optional)
-              </label>
-              <Select
-                value={formValues.technicianId ?? "none"}
-                onValueChange={(value) => {
-                  if (value === "none") {
-                    setFormValues((prev) => ({
-                      ...prev,
-                      technicianId: null,
-                      technicianName: null,
-                    }));
-                  } else {
-                    const technician = technicians.find((tech) => tech.id === value);
-                    setFormValues((prev) => ({
-                      ...prev,
-                      technicianId: value,
-                      technicianName: technician?.name ?? null,
-                    }));
-                  }
-                }}
-                disabled={isCreateDisabled}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select technician (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {technicians.map((tech) => (
-                    <SelectItem key={tech.id} value={tech.id}>
-                      {tech.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Notes
-              </label>
-              <Textarea
-                rows={4}
-                value={formValues.notes}
-                onChange={(event) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    notes: event.target.value,
-                  }))
-                }
-                placeholder="Any special instructions or customer preferences."
-              />
-            </div>
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                className="rounded-full"
-                onClick={() => {
-                  setCreateDialogOpen(false);
-                  resetForm();
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" className="rounded-full" disabled={saving || isCreateDisabled}>
-                {saving ? "Scheduling..." : "Schedule Service"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       <Dialog
         open={assignDialog.open}
@@ -783,21 +512,19 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
               <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Technician
               </label>
-              <Select
+              <Combobox
+                options={technicians.map((tech) => ({
+                  value: tech.id,
+                  label: tech.name,
+                }))}
                 value={assignTechnicianId}
                 onValueChange={(value) => setAssignTechnicianId(value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select technician" />
-                </SelectTrigger>
-                <SelectContent>
-                  {technicians.map((tech) => (
-                    <SelectItem key={tech.id} value={tech.id}>
-                      {tech.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select technician"
+                searchPlaceholder="Search technicians..."
+                emptyMessage="No technicians found"
+                disabled={saving}
+                allowClear
+              />
             </div>
             <DialogFooter>
               <Button
@@ -823,6 +550,7 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
                       technicianId: selectedTech.id,
                       technicianName: selectedTech.name,
                       status: "ASSIGNED",
+                      assignedBy: user?.uid ?? null,
                     });
                     toast.success("Service assigned.");
                     setAssignDialog({ open: false, service: null });

@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 
 type ServiceFiltersProps = {
   search: string;
@@ -88,19 +89,22 @@ export function ServiceFilters({
           </Select>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={technicianId} onValueChange={onTechnicianChange}>
-            <SelectTrigger className="h-11 rounded-full border-transparent bg-gradient-soft px-4 text-sm shadow-inner shadow-black/5">
-              <SelectValue placeholder="Technician" />
-            </SelectTrigger>
-            <SelectContent className="rounded-3xl">
-              <SelectItem value="ALL">All technicians</SelectItem>
-              {technicians.map((tech) => (
-                <SelectItem key={tech.id} value={tech.id}>
-                  {tech.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Combobox
+            options={[
+              { value: "ALL", label: "All technicians" },
+              ...technicians.map((tech) => ({
+                value: tech.id,
+                label: tech.name,
+              })),
+            ]}
+            value={technicianId}
+            onValueChange={onTechnicianChange}
+            placeholder="Technician"
+            searchPlaceholder="Search technicians..."
+            emptyMessage="No technicians found"
+            allowClear={false}
+            className="h-11 w-full rounded-full border-transparent bg-gradient-soft px-4 text-sm shadow-inner shadow-black/5"
+          />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Select value={dateFilter} onValueChange={onDateFilterChange}>

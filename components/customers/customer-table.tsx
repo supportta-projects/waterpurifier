@@ -54,6 +54,8 @@ export function CustomerTable() {
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
@@ -209,7 +211,10 @@ export function CustomerTable() {
           />
         </div>
         <div className="flex items-center gap-2">
-          <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}>
+          <Select value={status} onValueChange={(value) => {
+            setStatus(value as typeof status);
+            setCurrentPage(1);
+          }}>
             <SelectTrigger className="h-11 rounded-full border-transparent bg-gradient-soft px-5 text-sm shadow-inner shadow-black/5">
               <SelectValue placeholder="Filter customers" />
             </SelectTrigger>
@@ -332,6 +337,12 @@ export function CustomerTable() {
         emptyMessage={
           loading ? "Loading customers..." : "No customers found. Add one to get started."
         }
+        pagination={{
+          currentPage,
+          pageSize,
+          totalItems: filteredCustomers.length,
+          onPageChange: setCurrentPage,
+        }}
       />
 
       <div className="flex flex-col justify-between gap-3 rounded-[2rem] border border-border/40 bg-white/90 px-6 py-4 text-sm text-muted-foreground shadow-soft md:flex-row md:items-center">

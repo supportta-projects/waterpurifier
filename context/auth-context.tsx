@@ -42,12 +42,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         const result = await fetchUserProfile(currentUser.uid);
+        if (!result) {
+          console.error("User profile not found for uid:", currentUser.uid);
+          setProfile(null);
+          setStatus("unauthenticated");
+          await logout();
+          return;
+        }
         setProfile(result);
         setStatus("authenticated");
       } catch (error) {
         console.error("Failed to fetch user profile", error);
         setProfile(null);
-        setStatus("authenticated");
+        setStatus("unauthenticated");
+        await logout();
       }
     },
     [],

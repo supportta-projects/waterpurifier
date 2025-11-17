@@ -17,7 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useInvoices } from "@/hooks/use-invoices";
-import type { Invoice, InvoiceStatus } from "@/types/invoice";
+import { useCurrentTechnician } from "@/hooks/use-current-technician";
+import type { Invoice, InvoiceStatus, InvoiceType } from "@/types/invoice";
 
 const invoiceStatusMeta: Record<
   InvoiceStatus,
@@ -58,11 +59,20 @@ export function InvoiceTable() {
     : pathname?.startsWith("/staff")
       ? "/staff"
       : "/admin";
+  
+  // Get technician ID if viewing as technician
+  const isTechnician = pathname?.startsWith("/technician");
+  const { technicianId: currentTechnicianId } = useCurrentTechnician();
+  const technicianId = isTechnician ? currentTechnicianId ?? undefined : undefined;
+  
   const { invoices, loading, saving, error, refresh, handleStatusChange, handleResend } =
-    useInvoices();
+    useInvoices({ technicianId });
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | "ALL">("ALL");
+  const [typeFilter, setTypeFilter] = useState<InvoiceType | "ALL">("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   const stats = useMemo(() => {
     return invoices.reduce(
@@ -89,15 +99,16 @@ export function InvoiceTable() {
     const query = search.trim().toLowerCase();
     return invoices.filter((invoice) => {
       const matchesStatus = statusFilter === "ALL" || invoice.status === statusFilter;
+      const matchesType = typeFilter === "ALL" || invoice.invoiceType === typeFilter;
       const matchesQuery =
         !query ||
         invoice.number.toLowerCase().includes(query) ||
         invoice.customerName.toLowerCase().includes(query) ||
         invoice.productName.toLowerCase().includes(query);
 
-      return matchesStatus && matchesQuery;
+      return matchesStatus && matchesType && matchesQuery;
     });
-  }, [invoices, statusFilter, search]);
+  }, [invoices, statusFilter, typeFilter, search]);
 
   const getInvoiceTemplateUrl = (invoiceId: string): string => {
     if (typeof window === "undefined") return "";
@@ -192,8 +203,27 @@ export function InvoiceTable() {
         </div>
         <div className="flex items-center gap-2">
           <Select
+            value={typeFilter}
+            onValueChange={(value) => {
+              setTypeFilter(value as typeof typeFilter);
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="h-11 rounded-full border-transparent bg-gradient-soft px-5 text-sm shadow-inner shadow-black/5">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent className="rounded-3xl">
+              <SelectItem value="ALL">All Types</SelectItem>
+              <SelectItem value="ORDER">Order Invoice</SelectItem>
+              <SelectItem value="SERVICE">Service Invoice</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
             value={statusFilter}
-            onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}
+            onValueChange={(value) => {
+              setStatusFilter(value as typeof statusFilter);
+              setCurrentPage(1);
+            }}
           >
             <SelectTrigger className="h-11 rounded-full border-transparent bg-gradient-soft px-5 text-sm shadow-inner shadow-black/5">
               <SelectValue placeholder="Status" />
@@ -228,7 +258,12 @@ export function InvoiceTable() {
             className: "min-w-[200px]",
             render: (invoice) => (
               <div className="space-y-1 text-sm">
-                <p className="font-semibold text-primary">{invoice.number}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-primary">{invoice.number}</p>
+                  <Badge variant={invoice.invoiceType === "ORDER" ? "default" : "outline"} className="text-xs">
+                    {invoice.invoiceType === "ORDER" ? "Order" : "Service"}
+                  </Badge>
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Created {formatDate(invoice.createdAt)}
                 </p>
@@ -316,6 +351,12 @@ export function InvoiceTable() {
             ),
           },
         ]}
+        pagination={{
+          currentPage,
+          pageSize,
+          totalItems: filteredInvoices.length,
+          onPageChange: setCurrentPage,
+        }}
       />
 
       <div className="rounded-[2rem] border border-border/40 bg-white/95 px-6 py-4 text-xs text-muted-foreground shadow-soft">

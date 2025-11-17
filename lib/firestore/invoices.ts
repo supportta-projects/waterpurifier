@@ -5,17 +5,19 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
   orderBy,
   query,
   serverTimestamp,
   updateDoc,
+  where,
   type DocumentData,
   type DocumentSnapshot,
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
 import { generateCustomId } from "@/lib/utils/custom-id";
-import type { CreateInvoiceInput, Invoice, InvoiceStatus } from "@/types/invoice";
+import type { CreateInvoiceInput, Invoice, InvoiceStatus, InvoiceType } from "@/types/invoice";
 
 const shareBaseUrl = process.env.NEXT_PUBLIC_INVOICE_SHARE_BASE_URL ?? "";
 
@@ -65,8 +67,11 @@ function mapInvoiceSnapshot(snapshot: DocumentSnapshot<DocumentData>): Invoice {
   return {
     id: snapshot.id,
     customId: (data.customId as string) ?? snapshot.id,
-    orderId: data.orderId as string,
+    invoiceType: (data.invoiceType ?? "ORDER") as InvoiceType, // Default to ORDER for backward compatibility
+    orderId: data.orderId ?? null,
     orderCustomId: data.orderCustomId as string | undefined,
+    serviceId: data.serviceId ?? null,
+    serviceCustomId: data.serviceCustomId as string | undefined,
     customerId: data.customerId as string,
     customerCustomId: data.customerCustomId as string | undefined,
     customerName: data.customerName as string,
@@ -76,16 +81,32 @@ function mapInvoiceSnapshot(snapshot: DocumentSnapshot<DocumentData>): Invoice {
     totalAmount: data.totalAmount as number,
     number: data.number as string,
     status: (data.status ?? "PENDING") as InvoiceStatus,
-    shareUrl: data.shareUrl ?? "",
+    shareUrl: data.shareUrl ?? null,
     createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : "",
     updatedAt: data.updatedAt ? data.updatedAt.toDate().toISOString() : "",
   };
 }
 
-export async function fetchInvoices(): Promise<Invoice[]> {
+export async function fetchInvoices(options?: { technicianId?: string }): Promise<Invoice[]> {
   const invoicesQuery = query(collection(db, "invoices"), orderBy("createdAt", "desc"));
   const snapshot = await getDocs(invoicesQuery);
-  return snapshot.docs.map((docSnapshot) => mapInvoiceSnapshot(docSnapshot));
+  let invoices = snapshot.docs.map((docSnapshot) => mapInvoiceSnapshot(docSnapshot));
+
+  // If technicianId is provided, filter invoices by services assigned to this technician
+  if (options?.technicianId) {
+    const servicesCol = collection(db, "services");
+    const servicesSnapshot = await getDocs(
+      query(servicesCol, where("technicianId", "==", options.technicianId), limit(1000))
+    );
+    const technicianServiceIds = new Set(servicesSnapshot.docs.map(doc => doc.id));
+    
+    invoices = invoices.filter((invoice) => {
+      // Include invoices for services assigned to this technician
+      return invoice.serviceId && technicianServiceIds.has(invoice.serviceId);
+    });
+  }
+
+  return invoices;
 }
 
 export async function fetchInvoiceById(id: string): Promise<Invoice | null> {

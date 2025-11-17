@@ -37,9 +37,17 @@ function mapCustomerSnapshot(snapshot: DocumentSnapshot<DocumentData>): Customer
 }
 
 export async function fetchCustomers(): Promise<Customer[]> {
-  const customersQuery = query(collection(db, "customers"), orderBy("name", "asc"));
+  // Query without orderBy to avoid index requirement, then sort in memory
+  const customersQuery = query(collection(db, "customers"));
   const snapshot = await getDocs(customersQuery);
-  return snapshot.docs.map((docSnapshot) => mapCustomerSnapshot(docSnapshot));
+  const customers = snapshot.docs.map((docSnapshot) => mapCustomerSnapshot(docSnapshot));
+  
+  // Sort by createdAt descending (newest first)
+  return customers.sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return dateB - dateA; // Descending order (newest first)
+  });
 }
 
 export async function fetchCustomerById(id: string): Promise<Customer | null> {

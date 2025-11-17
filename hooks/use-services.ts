@@ -16,6 +16,7 @@ import type {
 
 type UseServicesOptions = {
   initialStatus?: ServiceStatus;
+  technicianId?: string;
 };
 
 type UseServicesReturn = {
@@ -38,7 +39,10 @@ export function useServices(options?: UseServicesOptions): UseServicesReturn {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchServices({ status: options?.initialStatus });
+      const data = await fetchServices({ 
+        status: options?.initialStatus,
+        technicianId: options?.technicianId,
+      });
       setServices(data);
       setError(null);
     } catch (err) {
@@ -47,7 +51,7 @@ export function useServices(options?: UseServicesOptions): UseServicesReturn {
     } finally {
       setLoading(false);
     }
-  }, [options?.initialStatus]);
+  }, [options?.initialStatus, options?.technicianId]);
 
   useEffect(() => {
     void load();

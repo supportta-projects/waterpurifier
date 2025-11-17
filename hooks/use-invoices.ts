@@ -9,6 +9,10 @@ import {
 } from "@/lib/firestore/invoices";
 import type { Invoice, InvoiceStatus } from "@/types/invoice";
 
+type UseInvoicesOptions = {
+  technicianId?: string;
+};
+
 type UseInvoicesReturn = {
   invoices: Invoice[];
   loading: boolean;
@@ -19,7 +23,7 @@ type UseInvoicesReturn = {
   handleResend: (id: string) => Promise<string | null>;
 };
 
-export function useInvoices(): UseInvoicesReturn {
+export function useInvoices(options?: UseInvoicesOptions): UseInvoicesReturn {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
@@ -28,7 +32,7 @@ export function useInvoices(): UseInvoicesReturn {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchInvoices();
+      const data = await fetchInvoices({ technicianId: options?.technicianId });
       setInvoices(data);
       setError(null);
     } catch (err) {
@@ -37,7 +41,7 @@ export function useInvoices(): UseInvoicesReturn {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [options?.technicianId]);
 
   useEffect(() => {
     void load();

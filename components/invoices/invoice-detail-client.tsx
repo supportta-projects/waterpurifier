@@ -177,6 +177,9 @@ export function InvoiceDetailClient({ invoiceId }: InvoiceDetailClientProps) {
             <div>
               <CardTitle className="text-2xl text-primary">
                 Invoice {invoice.number}
+                <Badge variant={invoice.invoiceType === "ORDER" ? "default" : "outline"} className="ml-2">
+                  {invoice.invoiceType === "ORDER" ? "Order" : "Service"}
+                </Badge>
               </CardTitle>
               <CardDescription>
                 Created {formatDate(invoice.createdAt)}
@@ -294,8 +297,21 @@ export function InvoiceDetailClient({ invoiceId }: InvoiceDetailClientProps) {
               </div>
               <div className="flex items-center gap-2">
                 <Receipt className="h-4 w-4 text-primary/80" />
-                Order ID:{" "}
-                <span className="font-semibold text-foreground">{invoice.orderCustomId ?? invoice.orderId}</span>
+                {invoice.invoiceType === "ORDER" ? (
+                  <>
+                    Order ID:{" "}
+                    <span className="font-semibold text-foreground">
+                      {invoice.orderCustomId ?? invoice.orderId ?? "—"}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    Service ID:{" "}
+                    <span className="font-semibold text-foreground">
+                      {invoice.serviceCustomId ?? invoice.serviceId ?? "—"}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </CardContent>

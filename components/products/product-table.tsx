@@ -67,6 +67,8 @@ export function ProductTable() {
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ProductStatus | "ALL">("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [formValues, setFormValues] = useState<ProductFormState>(emptyForm);
@@ -239,7 +241,10 @@ export function ProductTable() {
           />
         </div>
         <div className="flex items-center gap-2">
-          <Select value={status} onValueChange={(value) => setStatus(value as ProductStatus | "ALL")}>
+          <Select value={status} onValueChange={(value) => {
+            setStatus(value as ProductStatus | "ALL");
+            setCurrentPage(1);
+          }}>
             <SelectTrigger className="h-11 rounded-full border-transparent bg-gradient-soft px-5 text-sm shadow-inner shadow-black/5">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
@@ -355,6 +360,12 @@ export function ProductTable() {
         emptyMessage={
           loading ? "Loading products..." : "No products match your filters."
         }
+        pagination={{
+          currentPage,
+          pageSize,
+          totalItems: filteredProducts.length,
+          onPageChange: setCurrentPage,
+        }}
       />
 
       <div className="flex flex-col justify-between gap-3 rounded-[2rem] border border-border/40 bg-white/90 px-6 py-4 text-sm text-muted-foreground shadow-soft md:flex-row md:items-center">

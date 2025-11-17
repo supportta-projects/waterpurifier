@@ -1,10 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { ArrowLeft, ClipboardList, Users } from "lucide-react";
+import { ArrowLeft, ClipboardList, FileText, Users } from "lucide-react";
+import { toast } from "sonner";
 
 import { useServices } from "@/hooks/use-services";
+import { useAuth } from "@/hooks/use-auth";
+import { createInvoice } from "@/lib/firestore/invoices";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +17,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const statusMeta: Record<string, { label: string; variant: "default" | "secondary" | "success" | "destructive" | "outline" }> = {
   AVAILABLE: { label: "Available", variant: "secondary" },
@@ -35,6 +48,12 @@ export function ServiceDetailClient({ serviceId }: ServiceDetailClientProps) {
       ? "/staff/services"
       : "/admin/services";
   const { services, loading, error } = useServices();
+  const { role } = useAuth();
+  const isTechnician = role === "TECHNICIAN";
+
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [serviceCharge, setServiceCharge] = useState<string>("");
+  const [creatingInvoice, setCreatingInvoice] = useState(false);
 
   const service = useMemo(
     () => services.find((item) => item.id === serviceId) ?? null,
@@ -68,17 +87,66 @@ export function ServiceDetailClient({ serviceId }: ServiceDetailClientProps) {
   }
 
   const status = statusMeta[service.status];
+  const canCreateInvoice = isTechnician && service.status === "COMPLETED";
+
+  const handleCreateServiceInvoice = async () => {
+    if (!service) return;
+    
+    const amount = parseFloat(serviceCharge);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Please enter a valid service charge amount.");
+      return;
+    }
+
+    setCreatingInvoice(true);
+    try {
+      await createInvoice({
+        invoiceType: "SERVICE",
+        serviceId: service.id,
+        serviceCustomId: service.customId ?? undefined,
+        orderId: service.orderId ?? null,
+        orderCustomId: service.orderCustomId ?? null,
+        customerId: service.customerId,
+        customerCustomId: service.customerCustomId,
+        customerName: service.customerName,
+        productId: service.productId,
+        productCustomId: service.productCustomId,
+        productName: service.productName,
+        totalAmount: amount,
+      });
+      toast.success("Service invoice created successfully!");
+      setInvoiceDialogOpen(false);
+      setServiceCharge("");
+      router.push(`${basePath.replace("/services", "")}/invoices`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to create service invoice. Please try again.");
+    } finally {
+      setCreatingInvoice(false);
+    }
+  };
 
   return (
     <section className="space-y-6">
-      <Button
-        variant="ghost"
-        className="rounded-full text-sm text-primary hover:bg-primary/10"
-        onClick={() => router.back()}
-      >
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button
+          variant="ghost"
+          className="rounded-full text-sm text-primary hover:bg-primary/10"
+          onClick={() => router.back()}
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        {canCreateInvoice && (
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={() => setInvoiceDialogOpen(true)}
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            Create Service Invoice
+          </Button>
+        )}
+      </div>
 
       <Card className="rounded-[2rem] border border-border/40 bg-white/90 shadow-soft">
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -175,6 +243,72 @@ export function ServiceDetailClient({ serviceId }: ServiceDetailClientProps) {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Service Invoice</DialogTitle>
+            <DialogDescription>
+              Create an invoice for the service charges. This invoice will be separate from the order invoice.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="customer">Customer</Label>
+              <Input
+                id="customer"
+                value={service.customerName}
+                disabled
+                className="bg-muted"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="product">Product</Label>
+              <Input
+                id="product"
+                value={service.productName}
+                disabled
+                className="bg-muted"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="serviceCharge">
+                Service Charge <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="serviceCharge"
+                type="number"
+                placeholder="Enter service charge amount"
+                value={serviceCharge}
+                onChange={(e) => setServiceCharge(e.target.value)}
+                min="0"
+                step="0.01"
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter the amount to charge for this service
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setInvoiceDialogOpen(false);
+                setServiceCharge("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateServiceInvoice}
+              disabled={creatingInvoice || !serviceCharge}
+            >
+              {creatingInvoice ? "Creating..." : "Create Invoice"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

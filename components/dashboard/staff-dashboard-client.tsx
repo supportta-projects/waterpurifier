@@ -3,17 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  CalendarClock,
-  ClipboardList,
   Loader2,
-  PackagePlus,
   RefreshCcw,
-  Users,
-  Wallet,
 } from "lucide-react";
-import { toast } from "sonner";
 
 import { useStaffDashboard } from "@/hooks/use-staff-dashboard";
+import { useAuth } from "@/hooks/use-auth";
 import { StatCard } from "@/components/dashboard/stat-card";
 import {
   Card,
@@ -25,6 +20,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { StaffDashboardMetrics } from "@/lib/firestore/staff-dashboard";
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
 
 function formatDate(value?: string) {
   if (!value) return "—";
@@ -62,25 +64,26 @@ type StaffDashboardClientProps = {
 
 export function StaffDashboardClient({ initialData }: StaffDashboardClientProps) {
   const router = useRouter();
-  const { data, loading, error, refresh } = useStaffDashboard(initialData);
+  const { profile, user } = useAuth();
+  const staffUid = user?.uid ?? undefined;
+  const { data, loading, error, refresh } = useStaffDashboard(initialData, staffUid);
   const showSkeleton = loading && !data;
   const isRefreshing = loading && Boolean(data);
+  
+  const userName = profile?.name ?? user?.email?.split("@")[0] ?? "Staff Member";
+  const greeting = getGreeting();
 
   if (showSkeleton) {
     return (
-      <div className="space-y-8">
-        <section className="rounded-[2rem] bg-gradient-soft px-8 py-10 shadow-soft">
-          <div className="space-y-4">
-            <div className="h-3 w-24 rounded-full bg-white/30 animate-pulse" />
-            <div className="h-10 w-64 rounded-full bg-white/20 animate-pulse" />
-            <div className="h-14 w-full max-w-2xl rounded-3xl bg-white/10 animate-pulse" />
-          </div>
+      <div className="space-y-6">
+        <section className="rounded-2xl border border-border/40 bg-white px-6 py-6 shadow-sm">
+          <div className="h-8 w-32 rounded bg-muted/40 animate-pulse" />
         </section>
-        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-3xl border border-border/40 bg-white/90 p-6 shadow-soft">
-              <div className="h-3 w-24 rounded-full bg-muted/40 animate-pulse" />
-              <div className="mt-4 h-10 w-32 rounded-full bg-muted/30 animate-pulse" />
+            <div key={i} className="rounded-2xl border border-border/40 bg-white p-6 shadow-sm">
+              <div className="h-3 w-24 rounded bg-muted/40 animate-pulse" />
+              <div className="mt-4 h-8 w-20 rounded bg-muted/30 animate-pulse" />
             </div>
           ))}
         </section>
@@ -89,53 +92,42 @@ export function StaffDashboardClient({ initialData }: StaffDashboardClientProps)
   }
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-[2rem] bg-gradient-soft px-8 py-10 shadow-soft">
+    <div className="space-y-6">
+      <section className="rounded-2xl border border-border/40 bg-white px-6 py-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-widest text-primary/70">Today's Focus</p>
-            <h1 className="text-3xl font-semibold text-primary">
-              Coordinate orders & keep services running on time
+            <h1 className="text-2xl font-semibold text-primary">
+              {greeting}, {userName.split(" ")[0]}!
             </h1>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Review follow-ups, confirm technician assignments, and ensure quarterly visits are on
-              track.
+            <p className="mt-1 text-sm text-muted-foreground">
+              Here's what's happening with your services and customers today
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => router.push("/staff/orders")}
+              onClick={() => router.push("/staff/services/create")}
             >
-              Create Order
-            </Button>
-            <Button
-              variant="secondary"
-              className="rounded-full"
-              onClick={() => router.push("/staff/services")}
-            >
-              Schedule Service
+              Create Service
             </Button>
             <Button
               variant="ghost"
-              className="rounded-full"
+              size="sm"
               onClick={async () => {
-                toast.info("Refreshing dashboard...");
                 await refresh();
               }}
               disabled={loading}
             >
-              <RefreshCcw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              Refresh
+              <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </Button>
           </div>
         </div>
       </section>
 
       {isRefreshing ? (
-        <div className="flex items-center gap-2 rounded-[2rem] border border-border/40 bg-white/90 px-5 py-3 text-sm text-muted-foreground shadow-soft">
+        <div className="flex items-center gap-2 rounded-xl border border-border/40 bg-white px-4 py-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          Refreshing dashboard metrics...
+          Refreshing...
         </div>
       ) : null}
 
@@ -147,193 +139,119 @@ export function StaffDashboardClient({ initialData }: StaffDashboardClientProps)
 
       {data ? (
         <>
-          <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              title="Orders Created (7d)"
-              value={formatNumber(data.totals.ordersCreated7d)}
-              subtitle="New orders in the last week"
-            />
-            <StatCard
-              title="Services Assigned"
+              title="Services Created"
               value={formatNumber(data.totals.servicesAssigned)}
-              subtitle="Technicians scheduled this week"
+              subtitle="By you"
             />
             <StatCard
-              title="Pending Follow-ups"
+              title="Upcoming Services"
               value={formatNumber(data.totals.pendingFollowUps)}
-              subtitle="Reach out before Friday"
+              subtitle="Scheduled by you"
             />
             <StatCard
-              title="Invoices Awaiting Share"
+              title="Orders Created"
+              value={formatNumber(data.totals.ordersCreated7d)}
+              subtitle="Last 7 days"
+            />
+            <StatCard
+              title="Invoices Ready"
               value={formatNumber(data.totals.invoicesAwaitingShare)}
-              subtitle="Add WhatsApp link for visibility"
+              subtitle="To share"
             />
           </section>
 
-          <section className="grid gap-5 xl:grid-cols-[2.2fr_1.8fr]">
-            <Card className="rounded-[2rem] bg-white/90 shadow-soft">
-              <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <CardTitle className="text-xl">Upcoming Follow-ups</CardTitle>
-                  <CardDescription>
-                    Customers due for manual or quarterly visits—confirm their slots.
-                  </CardDescription>
-                </div>
-                <Button
-                  variant="ghost"
-                  className="rounded-full"
-                  onClick={() => router.push("/staff/customers")}
-                >
-                  View Customers
-                </Button>
+          <section className="grid gap-4 lg:grid-cols-2">
+            <Card className="rounded-2xl border border-border/40 bg-white shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg">Upcoming Services</CardTitle>
+                <CardDescription>Services scheduled for the next few days</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3">
                 {data.upcomingFollowUps.length === 0 ? (
-                  <div className="py-8 text-center text-sm text-muted-foreground">
-                    No upcoming follow-ups scheduled.
+                  <div className="py-6 text-center text-sm text-muted-foreground">
+                    No upcoming services
                   </div>
                 ) : (
-                  data.upcomingFollowUps.map((followUp) => (
+                  data.upcomingFollowUps.slice(0, 5).map((followUp) => (
                     <div
                       key={followUp.id}
-                      className="flex flex-col gap-3 rounded-2xl border border-border/40 bg-white px-5 py-4 shadow-inner shadow-black/5 sm:flex-row sm:items-center sm:justify-between"
+                      className="flex items-center justify-between rounded-xl border border-border/40 bg-white px-4 py-3"
                     >
                       <div>
-                        <p className="text-sm font-semibold text-primary">
+                        <p className="text-sm font-medium text-foreground">
                           {followUp.customerName}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {followUp.productName}
                         </p>
                       </div>
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2 text-sm">
                         <Badge variant={serviceStatusLabels[followUp.status]?.variant ?? "outline"}>
                           {serviceStatusLabels[followUp.status]?.label ?? followUp.status}
                         </Badge>
-                        <span>{formatDate(followUp.scheduledDate)}</span>
+                        <span className="text-muted-foreground">{formatDate(followUp.scheduledDate)}</span>
                       </div>
                     </div>
                   ))
                 )}
+                {data.upcomingFollowUps.length > 5 && (
+                  <Button
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => router.push("/staff/services")}
+                  >
+                    View All Services
+                  </Button>
+                )}
               </CardContent>
             </Card>
 
-            <Card className="rounded-[2rem] bg-white/90 shadow-soft">
+            <Card className="rounded-2xl border border-border/40 bg-white shadow-sm">
               <CardHeader>
-                <CardTitle className="text-xl">Active Orders</CardTitle>
-                <CardDescription>Orders needing service or payment follow-up.</CardDescription>
+                <CardTitle className="text-lg">Quick Actions</CardTitle>
+                <CardDescription>Common tasks and navigation</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {data.activeOrders.length === 0 ? (
-                  <div className="py-8 text-center text-sm text-muted-foreground">
-                    No active orders.
+              <CardContent className="space-y-4">
+                <div className="grid gap-2">
+                  <Button variant="outline" asChild className="justify-start">
+                    <Link href="/staff/services">View All Services</Link>
+                  </Button>
+                  <Button variant="outline" asChild className="justify-start">
+                    <Link href="/staff/services/create">Create Service</Link>
+                  </Button>
+                  <Button variant="outline" asChild className="justify-start">
+                    <Link href="/staff/customers">Customers</Link>
+                  </Button>
+                  <Button variant="outline" asChild className="justify-start">
+                    <Link href="/staff/invoices">Invoices</Link>
+                  </Button>
+                </div>
+                {data.totals.pendingFollowUps > 0 && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+                    <p className="font-medium text-amber-900">💡 Quick Tip</p>
+                    <p className="mt-1 text-amber-700">
+                      You have {data.totals.pendingFollowUps} service{data.totals.pendingFollowUps !== 1 ? "s" : ""} that need attention. Review them to keep customers satisfied.
+                    </p>
                   </div>
-                ) : (
-                  data.activeOrders.map((order) => (
-                    <div
-                      key={order.id}
-                      className="rounded-2xl border border-border/30 bg-gradient-soft px-4 py-4 text-sm"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-primary font-semibold">{order.customId ?? order.id.slice(0, 8)}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDate(order.createdAt)}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm text-foreground">{order.customerName}</p>
-                      <p className="text-xs text-muted-foreground">{order.productName}</p>
-                      <p className="mt-2 text-xs font-medium text-primary/80">
-                        {orderStatusLabels[order.status] ?? order.status}
-                      </p>
-                    </div>
-                  ))
                 )}
-              </CardContent>
-            </Card>
-          </section>
-
-          <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            <Card className="rounded-[2rem] bg-white/90 shadow-soft">
-              <CardHeader>
-                <CardTitle className="text-lg">Service Assignment</CardTitle>
-                <CardDescription>Technicians with upcoming visits this week.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <div className="flex items-center justify-between rounded-2xl bg-gradient-soft px-4 py-3">
-                  <span className="flex items-center gap-2 text-foreground">
-                    <ClipboardList className="h-4 w-4 text-primary" />
-                    Services Assigned
-                  </span>
-                  <span className="text-primary font-semibold">
-                    {formatNumber(data.totals.servicesAssigned)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between rounded-2xl bg-white/90 px-4 py-3 shadow-inner shadow-black/5">
-                  <span className="flex items-center gap-2 text-foreground">
-                    <Users className="h-4 w-4 text-primary" />
-                    Pending Follow-ups
-                  </span>
-                  <span>{formatNumber(data.totals.pendingFollowUps)}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-2xl bg-white/90 px-4 py-3 shadow-inner shadow-black/5">
-                  <span className="flex items-center gap-2 text-foreground">
-                    <PackagePlus className="h-4 w-4 text-primary" />
-                    Orders Created (7d)
-                  </span>
-                  <span>{formatNumber(data.totals.ordersCreated7d)}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-[2rem] bg-white/90 shadow-soft">
-              <CardHeader>
-                <CardTitle className="text-lg">Invoice Actions</CardTitle>
-                <CardDescription>Follow through on payment & customer communication.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <div className="flex items-center justify-between rounded-2xl bg-gradient-soft px-4 py-3">
-                  <span className="flex items-center gap-2 text-foreground">
-                    <Wallet className="h-4 w-4 text-primary" />
-                    Ready to Share
-                  </span>
-                  <span className="text-primary font-semibold">
-                    {formatNumber(data.invoiceActions.readyToShare)} invoices
-                  </span>
-                </div>
-                <div className="rounded-2xl bg-white/90 px-4 py-3 shadow-inner shadow-black/5">
-                  <p className="text-sm font-medium text-foreground">Pending Payments</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatNumber(data.invoiceActions.pendingPayments)} customers awaiting
-                    follow-up
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-white/90 px-4 py-3 shadow-inner shadow-black/5">
-                  <p className="text-sm font-medium text-foreground">Reminders sent today</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatNumber(data.invoiceActions.remindersSentToday)} WhatsApp links shared
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-[2rem] bg-white/90 shadow-soft">
-              <CardHeader>
-                <CardTitle className="text-lg">Quick Links</CardTitle>
-                <CardDescription>Frequently used actions for staff workflows.</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-3 text-primary">
-                <Button variant="outline" asChild className="justify-start rounded-2xl">
-                  <Link href="/staff/orders">Orders</Link>
-                </Button>
-                <Button variant="outline" asChild className="justify-start rounded-2xl">
-                  <Link href="/staff/services">All Services</Link>
-                </Button>
-                <Button variant="outline" asChild className="justify-start rounded-2xl">
-                  <Link href="/staff/customers">Customer Directory</Link>
-                </Button>
-                <Button variant="outline" asChild className="justify-start rounded-2xl">
-                  <Link href="/staff/invoices">Invoices</Link>
-                </Button>
+                {data.totals.invoicesAwaitingShare > 0 && (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm">
+                    <p className="font-medium text-blue-900">📧 Action Needed</p>
+                    <p className="mt-1 text-blue-700">
+                      {data.totals.invoicesAwaitingShare} invoice{data.totals.invoicesAwaitingShare !== 1 ? "s" : ""} from your orders ready to share with customers.
+                    </p>
+                  </div>
+                )}
+                {data.totals.ordersCreated7d > 0 && (
+                  <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm">
+                    <p className="font-medium text-green-900">📊 This Week</p>
+                    <p className="mt-1 text-green-700">
+                      You've created {data.totals.ordersCreated7d} order{data.totals.ordersCreated7d !== 1 ? "s" : ""} in the last 7 days. Great work!
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </section>

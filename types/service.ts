@@ -15,6 +15,8 @@ export type Service = {
   orderCustomId?: string | null;
   technicianId?: string | null;
   technicianName?: string | null;
+  createdBy?: string | null; // UID of staff/admin who created the service
+  assignedBy?: string | null; // UID of staff/admin who assigned the technician
   serviceType: ServiceType;
   status: ServiceStatus;
   scheduledDate: string;
@@ -36,6 +38,8 @@ export type CreateServiceInput = {
   notes?: string;
   technicianId?: string | null;
   technicianName?: string | null;
+  createdBy?: string | null; // UID of staff/admin who created the service
+  assignedBy?: string | null; // UID of staff/admin who assigned the technician
 };
 
 export type UpdateServiceInput = Partial<
@@ -47,6 +51,7 @@ export type UpdateServiceInput = Partial<
     | "scheduledDate"
     | "completedDate"
     | "notes"
+    | "assignedBy"
   >
 >;
 

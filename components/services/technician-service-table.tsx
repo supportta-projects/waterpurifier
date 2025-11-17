@@ -37,10 +37,13 @@ export function TechnicianServiceTable({ variant }: TechnicianServiceTableProps)
   const router = useRouter();
   const pathname = usePathname();
   const basePath = pathname?.startsWith("/technician") ? "/technician" : "/admin";
-  const { services, loading, saving, handleUpdate } = useServices();
   const { technician, technicianId } = useCurrentTechnician();
+  const { services, loading, saving, handleUpdate } = useServices({ 
+    technicianId: variant === "available" ? undefined : technicianId ?? undefined,
+  });
 
   const [search, setSearch] = useState("");
+  const [savingServiceId, setSavingServiceId] = useState<string | null>(null);
 
   const filteredServices = useMemo(() => {
     let result = services;
@@ -87,6 +90,7 @@ export function TechnicianServiceTable({ variant }: TechnicianServiceTableProps)
       return;
     }
 
+    setSavingServiceId(service.id);
     try {
       await handleUpdate(service.id, {
         technicianId,
@@ -97,10 +101,13 @@ export function TechnicianServiceTable({ variant }: TechnicianServiceTableProps)
     } catch (err) {
       console.error(err);
       toast.error("Failed to accept service. Please try again.");
+    } finally {
+      setSavingServiceId(null);
     }
   };
 
   const handleStartService = async (service: Service) => {
+    setSavingServiceId(service.id);
     try {
       await handleUpdate(service.id, {
         status: "IN_PROGRESS",
@@ -109,10 +116,13 @@ export function TechnicianServiceTable({ variant }: TechnicianServiceTableProps)
     } catch (err) {
       console.error(err);
       toast.error("Failed to start service. Please try again.");
+    } finally {
+      setSavingServiceId(null);
     }
   };
 
   const handleCompleteService = async (service: Service) => {
+    setSavingServiceId(service.id);
     try {
       await handleUpdate(service.id, {
         status: "COMPLETED",
@@ -122,6 +132,8 @@ export function TechnicianServiceTable({ variant }: TechnicianServiceTableProps)
     } catch (err) {
       console.error(err);
       toast.error("Failed to complete service. Please try again.");
+    } finally {
+      setSavingServiceId(null);
     }
   };
 
@@ -247,10 +259,14 @@ export function TechnicianServiceTable({ variant }: TechnicianServiceTableProps)
                     size="sm"
                     className="rounded-full"
                     onClick={() => handleAcceptService(service)}
-                    disabled={saving || !technicianId}
+                    disabled={savingServiceId !== null || !technicianId}
                   >
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                    Accept
+                    {savingServiceId === service.id ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                    )}
+                    {savingServiceId === service.id ? "Accepting..." : "Accept"}
                   </Button>
                 ) : null}
                 {variant === "assigned" && service.status === "ASSIGNED" ? (
@@ -258,10 +274,14 @@ export function TechnicianServiceTable({ variant }: TechnicianServiceTableProps)
                     size="sm"
                     className="rounded-full"
                     onClick={() => handleStartService(service)}
-                    disabled={saving}
+                    disabled={savingServiceId !== null}
                   >
-                    <Play className="h-4 w-4" />
-                    Start
+                    {savingServiceId === service.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
+                    {savingServiceId === service.id ? "Starting..." : "Start"}
                   </Button>
                 ) : null}
                 {variant === "assigned" && service.status === "IN_PROGRESS" ? (
@@ -269,10 +289,14 @@ export function TechnicianServiceTable({ variant }: TechnicianServiceTableProps)
                     size="sm"
                     className="rounded-full"
                     onClick={() => handleCompleteService(service)}
-                    disabled={saving}
+                    disabled={savingServiceId !== null}
                   >
-                    <BadgeCheck className="mr-2 h-4 w-4" />
-                    Complete
+                    {savingServiceId === service.id ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <BadgeCheck className="mr-2 h-4 w-4" />
+                    )}
+                    {savingServiceId === service.id ? "Completing..." : "Complete"}
                   </Button>
                 ) : null}
               </div>
