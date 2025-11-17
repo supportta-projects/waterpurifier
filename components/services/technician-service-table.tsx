@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Eye,
   Loader2,
+  Play,
   Search,
   Users,
 } from "lucide-react";
@@ -259,7 +260,7 @@ export function TechnicianServiceTable({ variant }: TechnicianServiceTableProps)
                     onClick={() => handleStartService(service)}
                     disabled={saving}
                   >
-                    <Loader2 className="mr-2 h-4 w-4" />
+                    <Play className="h-4 w-4" />
                     Start
                   </Button>
                 ) : null}
