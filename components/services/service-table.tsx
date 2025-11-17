@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Eye,
   Loader2,
+  Play,
   RotateCw,
   Search,
   Users,
@@ -16,7 +17,6 @@ import { toast } from "sonner";
 
 import { SimpleTable } from "@/components/data/simple-table";
 import { ServiceFilters } from "@/components/services/service-filters";
-import { CustomerSelectorWithOrders } from "@/components/services/customer-selector-with-orders";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useCustomers } from "@/hooks/use-customers";
@@ -41,7 +42,6 @@ import { useProducts } from "@/hooks/use-products";
 import { useServices } from "@/hooks/use-services";
 import { useTechnicians } from "@/hooks/use-technicians";
 import type { CreateServiceInput, Service, ServiceStatus, UpdateServiceInput } from "@/types/service";
-import type { Order } from "@/types/order";
 
 type ServiceTableProps = {
   variant: "all" | "latest";
@@ -93,17 +93,20 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
     service: null,
   });
   const [assignTechnicianId, setAssignTechnicianId] = useState<string>("");
+  const [navigatingToManualService, setNavigatingToManualService] = useState(false);
+  const [openingQuarterlyDialog, setOpeningQuarterlyDialog] = useState(false);
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [createMode, setCreateMode] = useState<"manual" | "quarterly">("manual");
   const [formValues, setFormValues] = useState<CreateServiceInput>({
     customerId: "",
     customerName: "",
     productId: "",
     productName: "",
-    serviceType: "MANUAL",
+    serviceType: "QUARTERLY",
     scheduledDate: "",
     notes: "",
+    technicianId: null,
+    technicianName: null,
   });
   const [formErrors, setFormErrors] = useState<ServiceFormErrors>({
     customerId: "",
@@ -194,9 +197,11 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
       customerName: "",
       productId: "",
       productName: "",
-      serviceType: "MANUAL",
+      serviceType: "QUARTERLY",
       scheduledDate: "",
       notes: "",
+      technicianId: null,
+      technicianName: null,
     });
     setFormErrors({
       customerId: "",
@@ -205,27 +210,15 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
     });
   };
 
-  const openCreateDialog = (mode: "manual" | "quarterly" = "manual") => {
+  const openCreateDialog = () => {
     resetForm();
-    setCreateMode(mode);
     setFormValues((prev) => ({
       ...prev,
-      serviceType: mode === "manual" ? "MANUAL" : "QUARTERLY",
+      serviceType: "QUARTERLY",
     }));
     setCreateDialogOpen(true);
   };
 
-  const handleOrderSelect = (order: Order) => {
-    setFormValues((prev) => ({
-      ...prev,
-      customerId: order.customerId,
-      customerName: order.customerName,
-      productId: order.productId,
-      productName: order.productName,
-      serviceType: "MANUAL",
-    }));
-    toast.success("Order selected. Please set the scheduled date and submit.");
-  };
 
   const validateForm = () => {
     const nextErrors: ServiceFormErrors = {
@@ -263,6 +256,10 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
     }
 
     try {
+      const selectedTechnician = formValues.technicianId
+        ? technicians.find((tech) => tech.id === formValues.technicianId)
+        : null;
+
       await handleCreate({
         customerId: selectedCustomer.id,
         customerName: selectedCustomer.name,
@@ -271,6 +268,8 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
         serviceType: formValues.serviceType,
         scheduledDate: formValues.scheduledDate,
         notes: formValues.notes,
+        technicianId: selectedTechnician?.id ?? null,
+        technicianName: selectedTechnician?.name ?? null,
       });
       toast.success("Service scheduled.");
       setCreateDialogOpen(false);
@@ -327,13 +326,49 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
         </div>
       {variant === "all" ? (
         <div className="flex flex-wrap gap-2">
-            <Button variant="outline" className="rounded-full" onClick={() => openCreateDialog("manual")}>
-              <ClipboardList className="mr-2 h-4 w-4" />
-              Manual Service
+            <Button 
+              variant="outline" 
+              className="rounded-full" 
+              onClick={() => {
+                setNavigatingToManualService(true);
+                router.push(`${basePath}/services/create`);
+              }}
+              disabled={navigatingToManualService}
+            >
+              {navigatingToManualService ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                <>
+                  <ClipboardList className="mr-2 h-4 w-4" />
+                  Manual Service
+                </>
+              )}
             </Button>
-            <Button variant="outline" className="rounded-full" onClick={() => openCreateDialog("quarterly")}>
-              <CalendarClock className="mr-2 h-4 w-4" />
-              Quarterly Service
+            <Button 
+              variant="outline" 
+              className="rounded-full" 
+              onClick={() => {
+                setOpeningQuarterlyDialog(true);
+                openCreateDialog();
+                // Reset after a brief moment since dialog opening is instant
+                setTimeout(() => setOpeningQuarterlyDialog(false), 100);
+              }}
+              disabled={openingQuarterlyDialog}
+            >
+              {openingQuarterlyDialog ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                <>
+                  <CalendarClock className="mr-2 h-4 w-4" />
+                  Quarterly Service
+                </>
+              )}
             </Button>
           </div>
         ) : null}
@@ -497,7 +532,7 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
                     onClick={() => handleStatusChange(service, "IN_PROGRESS")}
                     title="Start service"
                   >
-                    <Loader2 className="h-4 w-4" />
+                    <Play className="h-4 w-4" />
                     <span className="sr-only">Start service</span>
                   </Button>
                 ) : null}
@@ -551,101 +586,92 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
       ) : null}
 
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              Schedule {createMode === "manual" ? "Manual" : "Quarterly"} Service
-            </DialogTitle>
+            <DialogTitle>Schedule Quarterly Service</DialogTitle>
             <DialogDescription>
-              {createMode === "manual"
-                ? "Select a customer to view their details and order history. Choose an order to create a manual service."
-                : "Choose a customer and product to create a quarterly service visit. Technicians can be assigned after scheduling."}
+              Choose a customer and product to create a quarterly service visit. Technicians can be assigned after scheduling.
             </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleCreateSubmit}>
-            {createMode === "manual" ? (
-              <CustomerSelectorWithOrders
-                selectedCustomerId={formValues.customerId}
-                onCustomerChange={(customerId) => {
-                  const customer = customers.find((c) => c.id === customerId);
+            <div className="grid gap-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Customer
+              </label>
+              <Select
+                value={formValues.customerId}
+                onValueChange={(value) => {
+                  const customer = customers.find((c) => c.id === value);
                   setFormValues((prev) => ({
                     ...prev,
-                    customerId,
+                    customerId: value,
                     customerName: customer?.name ?? "",
-                    productId: "",
-                    productName: "",
                   }));
                 }}
-                onSelectOrder={handleOrderSelect}
                 disabled={isCreateDisabled}
-              />
-            ) : (
-              <>
-                <div className="grid gap-2">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Customer
-                  </label>
-                  <Select
-                    value={formValues.customerId}
-                    onValueChange={(value) => {
-                      const customer = customers.find((c) => c.id === value);
-                      setFormValues((prev) => ({
-                        ...prev,
-                        customerId: value,
-                        customerName: customer?.name ?? "",
-                      }));
-                    }}
-                    disabled={isCreateDisabled}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select customer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customers.map((customer) => (
-                        <SelectItem key={customer.id} value={customer.id}>
-                          {customer.name} ({customer.email})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {formErrors.customerId ? (
-                    <p className="text-xs text-destructive">{formErrors.customerId}</p>
-                  ) : null}
-                </div>
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select customer" />
+                </SelectTrigger>
+                <SelectContent>
+                  {customers.map((customer) => (
+                    <SelectItem key={customer.id} value={customer.id}>
+                      {customer.name} ({customer.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {formErrors.customerId ? (
+                <p className="text-xs text-destructive">{formErrors.customerId}</p>
+              ) : null}
+            </div>
 
-                <div className="grid gap-2">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Product
-                  </label>
-                  <Select
-                    value={formValues.productId}
-                    onValueChange={(value) => {
-                      const product = products.find((p) => p.id === value);
-                      setFormValues((prev) => ({
-                        ...prev,
-                        productId: value,
-                        productName: product?.name ?? "",
-                      }));
-                    }}
-                    disabled={isCreateDisabled}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select product" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products.map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {formErrors.productId ? (
-                    <p className="text-xs text-destructive">{formErrors.productId}</p>
-                  ) : null}
-                </div>
-              </>
-            )}
+            <div className="grid gap-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Select Product
+              </label>
+              <div className="max-h-[200px] space-y-3 overflow-y-auto rounded-xl border border-input bg-white/90 p-4">
+                {products.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No products available.</p>
+                ) : (
+                  products.map((product) => (
+                    <label
+                      key={product.id}
+                      className="flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-secondary/50 transition-colors"
+                    >
+                      <Checkbox
+                        checked={formValues.productId === product.id}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setFormValues((prev) => ({
+                              ...prev,
+                              productId: product.id,
+                              productName: product.name,
+                            }));
+                          } else {
+                            setFormValues((prev) => ({
+                              ...prev,
+                              productId: "",
+                              productName: "",
+                            }));
+                          }
+                        }}
+                        disabled={isCreateDisabled}
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-foreground">{product.name}</p>
+                        {product.model ? (
+                          <p className="text-xs text-muted-foreground">Model: {product.model}</p>
+                        ) : null}
+                      </div>
+                    </label>
+                  ))
+                )}
+              </div>
+              {formErrors.productId ? (
+                <p className="text-xs text-destructive">{formErrors.productId}</p>
+              ) : null}
+            </div>
 
             <div className="grid gap-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -664,6 +690,44 @@ export function ServiceTable({ variant, initialDateFilter }: ServiceTableProps) 
               {formErrors.scheduledDate ? (
                 <p className="text-xs text-destructive">{formErrors.scheduledDate}</p>
               ) : null}
+            </div>
+
+            <div className="grid gap-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Assign Technician (Optional)
+              </label>
+              <Select
+                value={formValues.technicianId ?? "none"}
+                onValueChange={(value) => {
+                  if (value === "none") {
+                    setFormValues((prev) => ({
+                      ...prev,
+                      technicianId: null,
+                      technicianName: null,
+                    }));
+                  } else {
+                    const technician = technicians.find((tech) => tech.id === value);
+                    setFormValues((prev) => ({
+                      ...prev,
+                      technicianId: value,
+                      technicianName: technician?.name ?? null,
+                    }));
+                  }
+                }}
+                disabled={isCreateDisabled}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select technician (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {technicians.map((tech) => (
+                    <SelectItem key={tech.id} value={tech.id}>
+                      {tech.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid gap-2">

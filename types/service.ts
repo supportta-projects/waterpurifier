@@ -11,6 +11,8 @@ export type Service = {
   productId: string;
   productCustomId?: string;
   productName: string;
+  orderId?: string | null;
+  orderCustomId?: string | null;
   technicianId?: string | null;
   technicianName?: string | null;
   serviceType: ServiceType;
@@ -27,9 +29,13 @@ export type CreateServiceInput = {
   customerName: string;
   productId: string;
   productName: string;
+  orderId?: string | null;
+  orderCustomId?: string | null;
   serviceType: ServiceType;
   scheduledDate: string;
   notes?: string;
+  technicianId?: string | null;
+  technicianName?: string | null;
 };
 
 export type UpdateServiceInput = Partial<

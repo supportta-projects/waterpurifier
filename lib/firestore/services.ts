@@ -17,6 +17,7 @@ import { db } from "@/lib/firebase";
 import { generateCustomId } from "@/lib/utils/custom-id";
 import { fetchCustomerById } from "./customers";
 import { fetchProduct } from "./products";
+import { fetchOrderById } from "./orders";
 import type {
   CreateServiceInput,
   Service,
@@ -41,6 +42,8 @@ function mapServiceSnapshot(snapshot: DocumentSnapshot<DocumentData>): Service {
     productId: data.productId as string,
     productCustomId: data.productCustomId as string | undefined,
     productName: data.productName as string,
+    orderId: data.orderId ?? null,
+    orderCustomId: data.orderCustomId ?? null,
     technicianId: data.technicianId ?? null,
     technicianName: data.technicianName ?? null,
     serviceType: (data.serviceType ?? "MANUAL") as ServiceType,
@@ -89,21 +92,25 @@ export async function fetchServices(options?: {
 }
 
 export async function createService(payload: CreateServiceInput) {
-  // Fetch customer and product to get their custom IDs
-  const [customer, product] = await Promise.all([
+  // Fetch customer, product, and order (if orderId provided) to get their custom IDs
+  const [customer, product, order] = await Promise.all([
     fetchCustomerById(payload.customerId).catch(() => null),
     fetchProduct(payload.productId).catch(() => null),
+    payload.orderId ? fetchOrderById(payload.orderId).catch(() => null) : Promise.resolve(null),
   ]);
 
   const customId = generateCustomId("SRV");
+  const status: ServiceStatus = payload.technicianId ? "ASSIGNED" : "AVAILABLE";
   const docRef = await addDoc(collection(db, "services"), {
     ...payload,
     customId,
     customerCustomId: customer?.customId,
     productCustomId: product?.customId,
-    status: "AVAILABLE" satisfies ServiceStatus,
-    technicianId: null,
-    technicianName: null,
+    orderId: payload.orderId ?? null,
+    orderCustomId: order?.customId ?? null,
+    status,
+    technicianId: payload.technicianId ?? null,
+    technicianName: payload.technicianName ?? null,
     completedDate: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),

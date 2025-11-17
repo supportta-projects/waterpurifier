@@ -164,6 +164,11 @@ export function ServiceDetailClient({ serviceId }: ServiceDetailClientProps) {
             <p className="text-xs text-muted-foreground">
               Product ID: {service.productCustomId ?? service.productId}
             </p>
+            {service.orderId ? (
+              <p className="text-xs text-muted-foreground">
+                Order ID: {service.orderCustomId ?? service.orderId}
+              </p>
+            ) : null}
             {service.technicianId ? (
               <p className="text-xs text-muted-foreground">Technician ID: {service.technicianId}</p>
             ) : null}

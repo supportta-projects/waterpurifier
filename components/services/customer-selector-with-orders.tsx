@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, Mail, MapPin, Phone, ShoppingBag, Wrench } from "lucide-react";
+import { Calendar, Mail, MapPin, Phone, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -14,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SimpleTable } from "@/components/data/simple-table";
 import { useCustomers } from "@/hooks/use-customers";
 import { fetchOrdersByCustomerId } from "@/lib/firestore/orders";
 import type { Customer } from "@/types/customer";
@@ -22,13 +21,15 @@ import type { Order } from "@/types/order";
 
 type CustomerSelectorWithOrdersProps = {
   selectedCustomerId: string;
+  selectedOrderId?: string | null;
   onCustomerChange: (customerId: string) => void;
-  onSelectOrder: (order: Order) => void;
+  onSelectOrder: (order: Order, checked: boolean) => void;
   disabled?: boolean;
 };
 
 export function CustomerSelectorWithOrders({
   selectedCustomerId,
+  selectedOrderId,
   onCustomerChange,
   onSelectOrder,
   disabled,
@@ -153,88 +154,74 @@ export function CustomerSelectorWithOrders({
                 No orders found for this customer.
               </div>
             ) : (
-              <SimpleTable
-                data={orders}
-                columns={[
-                  {
-                    key: "productName",
-                    header: "Product",
-                    className: "min-w-[180px]",
-                    render: (order) => (
-                      <div className="space-y-1">
-                        <p className="text-sm font-semibold text-primary">{order.productName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Qty: {order.quantity} × ₹{order.unitPrice.toLocaleString()}
-                        </p>
+              <div className="max-h-[400px] space-y-3 overflow-y-auto">
+                {orders
+                  .filter((order) => order.status !== "CANCELLED")
+                  .map((order) => (
+                    <label
+                      key={order.id}
+                      className="flex cursor-pointer items-start gap-3 rounded-xl border border-input bg-white/90 p-4 transition-colors hover:bg-secondary/50"
+                    >
+                      <Checkbox
+                        checked={selectedOrderId === order.id}
+                        onCheckedChange={(checked) => {
+                          onSelectOrder(order, checked === true);
+                        }}
+                        disabled={disabled}
+                        className="mt-1"
+                      />
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-primary">{order.productName}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Order ID: {order.customId ?? order.id.slice(0, 8)}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Qty: {order.quantity} × ₹{order.unitPrice.toLocaleString("en-IN")}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-foreground">
+                              ₹{order.totalAmount.toLocaleString("en-IN")}
+                            </p>
+                            <div className="mt-1">
+                              {(() => {
+                                const statusMeta: Record<
+                                  Order["status"],
+                                  { label: string; variant: "default" | "secondary" | "success" | "destructive" | "outline" }
+                                > = {
+                                  PENDING: { label: "Pending", variant: "outline" },
+                                  FULFILLED: { label: "Fulfilled", variant: "success" },
+                                  CANCELLED: { label: "Cancelled", variant: "destructive" },
+                                };
+                                const meta = statusMeta[order.status];
+                                return (
+                                  <Badge variant={meta.variant} className="uppercase">
+                                    {meta.label}
+                                  </Badge>
+                                );
+                              })()}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Calendar className="h-3.5 w-3.5 text-primary/70" />
+                          {new Date(order.createdAt).toLocaleDateString("en-IN", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </div>
                       </div>
-                    ),
-                  },
-                  {
-                    key: "totalAmount",
-                    header: "Amount",
-                    className: "min-w-[120px]",
-                    render: (order) => (
-                      <span className="text-sm font-semibold text-foreground">
-                        ₹{order.totalAmount.toLocaleString()}
-                      </span>
-                    ),
-                  },
-                  {
-                    key: "status",
-                    header: "Status",
-                    className: "min-w-[100px]",
-                    render: (order) => {
-                      const statusMeta: Record<
-                        Order["status"],
-                        { label: string; variant: "default" | "secondary" | "success" | "destructive" | "outline" }
-                      > = {
-                        PENDING: { label: "Pending", variant: "outline" },
-                        FULFILLED: { label: "Fulfilled", variant: "success" },
-                        CANCELLED: { label: "Cancelled", variant: "destructive" },
-                      };
-                      const meta = statusMeta[order.status];
-                      return (
-                        <Badge variant={meta.variant} className="uppercase">
-                          {meta.label}
-                        </Badge>
-                      );
-                    },
-                  },
-                  {
-                    key: "createdAt",
-                    header: "Order Date",
-                    className: "min-w-[140px] whitespace-nowrap",
-                    render: (order) => (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Calendar className="h-3.5 w-3.5 text-primary/70" />
-                        {new Date(order.createdAt).toLocaleDateString("en-IN", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </div>
-                    ),
-                  },
-                  {
-                    key: "actions",
-                    header: "Actions",
-                    className: "min-w-[160px]",
-                    render: (order) => (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="rounded-full"
-                        onClick={() => onSelectOrder(order)}
-                        disabled={order.status === "CANCELLED"}
-                      >
-                        <Wrench className="mr-2 h-4 w-4" />
-                        Create Service
-                      </Button>
-                    ),
-                  },
-                ]}
-                emptyMessage="No orders found."
-              />
+                    </label>
+                  ))}
+                {orders.filter((order) => order.status !== "CANCELLED").length === 0 ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">
+                    No active orders found for this customer.
+                  </div>
+                ) : null}
+              </div>
             )}
           </CardContent>
         </Card>

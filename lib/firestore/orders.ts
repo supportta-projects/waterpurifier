@@ -70,6 +70,14 @@ export async function fetchOrdersByCustomerId(customerId: string): Promise<Order
   });
 }
 
+export async function fetchOrderById(orderId: string): Promise<Order> {
+  const orderDoc = await getDoc(doc(db, "orders", orderId));
+  if (!orderDoc.exists()) {
+    throw new Error("Order not found");
+  }
+  return mapOrderSnapshot(orderDoc);
+}
+
 export async function createOrder(payload: CreateOrderInput): Promise<Order> {
   const totalAmount = payload.unitPrice * payload.quantity;
   const ordersRef = collection(db, "orders");

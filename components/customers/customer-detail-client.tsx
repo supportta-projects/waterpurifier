@@ -1,72 +1,33 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, Calendar, ClipboardList, Mail, MapPin, Phone, Plus } from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
+import { ArrowLeft, Calendar, ClipboardList, Loader2, Mail, MapPin, Phone, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { SimpleTable } from "@/components/data/simple-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { fetchCustomers } from "@/lib/firestore/customers";
 import { fetchOrdersByCustomerId } from "@/lib/firestore/orders";
-import { useServices } from "@/hooks/use-services";
-import { useProducts } from "@/hooks/use-products";
 import type { Customer } from "@/types/customer";
 import type { Order } from "@/types/order";
-import type { CreateServiceInput } from "@/types/service";
 
 type CustomerDetailClientProps = {
   customerId: string;
 };
 
-type ServiceFormErrors = {
-  productId: string;
-  scheduledDate: string;
-};
-
 export function CustomerDetailClient({ customerId }: CustomerDetailClientProps) {
   const router = useRouter();
-  const { handleCreate, saving } = useServices();
-  const { products, loading: productsLoading } = useProducts();
+  const pathname = usePathname();
+  const basePath = pathname?.startsWith("/staff") ? "/staff" : "/admin";
 
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [navigatingToManualService, setNavigatingToManualService] = useState<string | null>(null);
 
-  const [createServiceDialogOpen, setCreateServiceDialogOpen] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [formValues, setFormValues] = useState<{
-    productId: string;
-    scheduledDate: string;
-    notes: string;
-  }>({
-    productId: "",
-    scheduledDate: "",
-    notes: "",
-  });
-  const [formErrors, setFormErrors] = useState<ServiceFormErrors>({
-    productId: "",
-    scheduledDate: "",
-  });
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -95,72 +56,6 @@ export function CustomerDetailClient({ customerId }: CustomerDetailClientProps) 
     void loadData();
   }, [loadData]);
 
-  const openCreateServiceDialog = (order: Order) => {
-    setSelectedOrder(order);
-    setFormValues({
-      productId: order.productId,
-      scheduledDate: "",
-      notes: "",
-    });
-    setFormErrors({
-      productId: "",
-      scheduledDate: "",
-    });
-    setCreateServiceDialogOpen(true);
-  };
-
-  const validateForm = () => {
-    const nextErrors: ServiceFormErrors = {
-      productId: "",
-      scheduledDate: "",
-    };
-    let isValid = true;
-    if (!formValues.productId) {
-      nextErrors.productId = "Select a product.";
-      isValid = false;
-    }
-    if (!formValues.scheduledDate) {
-      nextErrors.scheduledDate = "Choose a date.";
-      isValid = false;
-    }
-    setFormErrors(nextErrors);
-    return isValid;
-  };
-
-  const handleCreateService = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!validateForm() || !selectedOrder || !customer) return;
-
-    const selectedProduct = products.find((product) => product.id === formValues.productId);
-    if (!selectedProduct) {
-      toast.error("Unable to find selected product.");
-      return;
-    }
-
-    try {
-      const payload: CreateServiceInput = {
-        customerId: customer.id,
-        customerName: customer.name,
-        productId: selectedProduct.id,
-        productName: selectedProduct.name,
-        serviceType: "MANUAL",
-        scheduledDate: formValues.scheduledDate,
-        notes: formValues.notes,
-      };
-      await handleCreate(payload);
-      toast.success("Manual service scheduled.");
-      setCreateServiceDialogOpen(false);
-      setSelectedOrder(null);
-      setFormValues({
-        productId: "",
-        scheduledDate: "",
-        notes: "",
-      });
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to schedule service. Please try again.");
-    }
-  };
 
   if (loading) {
     return (
@@ -339,7 +234,7 @@ export function CustomerDetailClient({ customerId }: CustomerDetailClientProps) 
                     variant="outline"
                     size="sm"
                     className="rounded-full"
-                    onClick={() => router.push(`/admin/orders/${order.id}`)}
+                      onClick={() => router.push(`${basePath}/orders/${order.id}`)}
                   >
                     View
                   </Button>
@@ -347,10 +242,23 @@ export function CustomerDetailClient({ customerId }: CustomerDetailClientProps) 
                     <Button
                       size="sm"
                       className="rounded-full"
-                      onClick={() => openCreateServiceDialog(order)}
+                      onClick={() => {
+                        setNavigatingToManualService(order.id);
+                        router.push(`${basePath}/services/create?orderId=${order.id}&customerId=${order.customerId}`);
+                      }}
+                      disabled={navigatingToManualService === order.id}
                     >
-                      <ClipboardList className="mr-1.5 h-4 w-4" />
-                      Manual Service
+                      {navigatingToManualService === order.id ? (
+                        <>
+                          <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          <ClipboardList className="mr-1.5 h-4 w-4" />
+                          Manual Service
+                        </>
+                      )}
                     </Button>
                   ) : null}
                 </div>
@@ -360,104 +268,6 @@ export function CustomerDetailClient({ customerId }: CustomerDetailClientProps) 
           emptyMessage="No orders found for this customer."
         />
       </div>
-
-      <Dialog open={createServiceDialogOpen} onOpenChange={setCreateServiceDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Create Manual Service</DialogTitle>
-            <DialogDescription>
-              Schedule a manual service for this customer based on their order. The service will be
-              created as "Manual" type.
-            </DialogDescription>
-          </DialogHeader>
-          <form className="space-y-4" onSubmit={handleCreateService}>
-            <div className="grid gap-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Product
-              </label>
-              <Select
-                value={formValues.productId}
-                onValueChange={(value) =>
-                  setFormValues((prev) => ({ ...prev, productId: value }))
-                }
-                disabled={productsLoading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select product" />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {formErrors.productId ? (
-                <p className="text-xs text-destructive">{formErrors.productId}</p>
-              ) : null}
-            </div>
-
-            <div className="grid gap-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Scheduled Date
-              </label>
-              <Input
-                type="date"
-                value={formValues.scheduledDate}
-                onChange={(event) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    scheduledDate: event.target.value,
-                  }))
-                }
-              />
-              {formErrors.scheduledDate ? (
-                <p className="text-xs text-destructive">{formErrors.scheduledDate}</p>
-              ) : null}
-            </div>
-
-            <div className="grid gap-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Notes
-              </label>
-              <Textarea
-                rows={4}
-                value={formValues.notes}
-                onChange={(event) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    notes: event.target.value,
-                  }))
-                }
-                placeholder="Any special instructions or customer preferences."
-              />
-            </div>
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                className="rounded-full"
-                onClick={() => {
-                  setCreateServiceDialogOpen(false);
-                  setSelectedOrder(null);
-                  setFormValues({
-                    productId: "",
-                    scheduledDate: "",
-                    notes: "",
-                  });
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" className="rounded-full" disabled={saving || productsLoading}>
-                {saving ? "Scheduling..." : "Schedule Service"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
